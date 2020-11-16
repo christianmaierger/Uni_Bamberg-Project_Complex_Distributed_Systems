@@ -1,0 +1,64 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'eclipse'
+    id 'idea'
+    id "com.github.erizo.gradle.jcstress" version "0.8.6"
+    id 'org.openjfx.javafxplugin' version '0.0.9'
+}
+
+sourceCompatibility = '11'
+
+dependencies {
+    implementation 'org.openjdk.jcstress:jcstress-core:0.7'
+    implementation 'net.jcip:jcip-annotations:1.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+javafx {
+    modules = ['javafx.base', 'javafx.controls']
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/jcstress/java']
+        }
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+configurations {
+    jcstress.extendsFrom implementation
+}
+
+repositories {
+    jcenter()
+}
+
+run {
+    args = ["GUI", "src/main/resources/data", "txt"]
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jcstress {
+    forks = "1"
+    iterations = "1"
+}
+
+mainClassName = 'de.uniba.wiai.dsg.pks.assignment.Main'
