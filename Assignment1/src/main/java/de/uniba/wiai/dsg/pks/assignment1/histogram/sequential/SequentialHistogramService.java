@@ -9,7 +9,9 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 		import java.nio.file.Files;
 		import java.nio.file.Path;
 		import java.nio.file.Paths;
+		import java.util.Arrays;
 		import java.util.List;
+		import java.util.concurrent.atomic.AtomicInteger;
 		import java.util.concurrent.atomic.AtomicLong;
 
 public class SequentialHistogramService implements HistogramService {
@@ -18,6 +20,7 @@ public class SequentialHistogramService implements HistogramService {
 	AtomicLong dirCounter = new AtomicLong();
 	AtomicLong fileCounter = new AtomicLong();
 	AtomicLong processedFileCounter = new AtomicLong();
+	AtomicInteger printLineCounter = new AtomicInteger()=0;
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -72,15 +75,16 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	private void processDirectory(String rootDirectory, String fileExtension){
 		Path folder = Paths.get(rootDirectory) ;
+		String currentDirectory;
 		 try ( DirectoryStream<Path> stream = Files.newDirectoryStream(folder) ) {
 			 for ( Path path : stream ) {
+				 currentDirectory = path.toString();
 				if ( Files.isDirectory(path)) {
 					 // TODO DIRECTORY
 					//  should be done by making dir a string and calling method recursively?
-					String currentDirectory = path.toString();
 					this.processDirectory(currentDirectory, fileExtension);
 					histogram.setDirectories(dirCounter.incrementAndGet());
-				} else if ( Files . isRegularFile ( path ) ) {
+				} else if (Files.isRegularFile (path)) {
 					// hier müssten dann die files incrementiert werden, ist aber ne Einfügung!?
 					histogram.setFiles(fileCounter.incrementAndGet());
 					 if ( path.getFileName( ).toString( ).endsWith(fileExtension)) {
@@ -90,13 +94,26 @@ public class SequentialHistogramService implements HistogramService {
 						 histogram.setFiles(processedFileCounter.incrementAndGet());
 						 // TODO Process lines
 						 processFile(lines);
+						 printFileProcessed(currentDirectory);
 						 }
 					 }
 				 }
 			 // dir müsste hier finished sein, log callen?
-			 // ich weiß was du meinst, ausgeben, dass dir durch ist, aber finde die nicht, muss die erstellt werden?
-
+			 // müsste passen um das jeweilige dir auszugeben, wenn for schleife durch ist, andere dirs sind ja in rekursiven calls
+					printDirectoryProcessed(currentDirectory);
 			 }
+	}
+
+	private void printDirectoryProcessed(String dir) {
+		printLineCounter.incrementAndGet();
+		System.out.println("N:"+ printLineCounter + "- Directory " + dir + " finished \n" + "[distr=" +
+				Arrays.toString(histogram.getDistribution())+", \n"+  "lines=" + histogram.getLines() + ", files=" +
+				histogram.getFiles() +  ", processedFiles=" + histogram.getProcessedFiles() + ", directories=" + histogram.getDirectories() + "]");
+	}
+
+	private void printFileProcessed(String path) {
+		printLineCounter.incrementAndGet();
+		System.out.println("N:"+ printLineCounter + "- File " + path + " finished !");
 	}
 
 	/**
