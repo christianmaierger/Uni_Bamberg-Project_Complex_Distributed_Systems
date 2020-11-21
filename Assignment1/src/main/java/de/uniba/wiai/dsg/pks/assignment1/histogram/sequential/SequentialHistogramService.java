@@ -4,12 +4,14 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 		import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 		import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 
+		import java.io.IOException;
 		import java.nio.charset.StandardCharsets;
 		import java.nio.file.DirectoryStream;
 		import java.nio.file.Files;
 		import java.nio.file.Path;
 		import java.nio.file.Paths;
 		import java.util.Arrays;
+		import java.util.LinkedList;
 		import java.util.List;
 		import java.util.concurrent.atomic.AtomicInteger;
 		import java.util.concurrent.atomic.AtomicLong;
@@ -17,10 +19,12 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 public class SequentialHistogramService implements HistogramService {
 	private Histogram histogram = new Histogram();
 	// vielleicht unnätig, aber dachte ich machs gleich atomic mit incrementAndGet
-	AtomicLong dirCounter = new AtomicLong();
-	AtomicLong fileCounter = new AtomicLong();
-	AtomicLong processedFileCounter = new AtomicLong();
-	AtomicInteger printLineCounter = new AtomicInteger()=0;
+	AtomicLong dirCounter = new AtomicLong(0);
+	AtomicLong fileCounter = new AtomicLong(0);
+	AtomicLong processedFileCounter = new AtomicLong(0);
+	AtomicInteger processedLineCounter = new AtomicInteger(0);
+	AtomicInteger printLineCounter = new AtomicInteger(0);
+
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -73,9 +77,9 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param rootDirectory
 	 * @param fileExtension
 	 */
-	private void processDirectory(String rootDirectory, String fileExtension){
+	private void processDirectory(String rootDirectory, String fileExtension) throws IOException {
 		Path folder = Paths.get(rootDirectory) ;
-		String currentDirectory;
+		String currentDirectory="";
 		 try ( DirectoryStream<Path> stream = Files.newDirectoryStream(folder) ) {
 			 for ( Path path : stream ) {
 				 currentDirectory = path.toString();
@@ -91,7 +95,7 @@ public class SequentialHistogramService implements HistogramService {
 					 	// kein try catch fürs Einlesen?
 						 List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8 ) ;
 						 // hier gleich die processedFiles increment: why not dear franzi?
-						 histogram.setFiles(processedFileCounter.incrementAndGet());
+						 histogram.setProcessedFiles(processedFileCounter.incrementAndGet());
 						 // TODO Process lines
 						 processFile(lines);
 						 printFileProcessed(currentDirectory);
@@ -108,7 +112,7 @@ public class SequentialHistogramService implements HistogramService {
 		printLineCounter.incrementAndGet();
 		System.out.println("N:"+ printLineCounter + "- Directory " + dir + " finished \n" + "[distr=" +
 				Arrays.toString(histogram.getDistribution())+", \n"+  "lines=" + histogram.getLines() + ", files=" +
-				histogram.getFiles() +  ", processedFiles=" + histogram.getProcessedFiles() + ", directories=" + histogram.getDirectories() + "]");
+				histogram.getFiles() +  ", processedFiles=" + histogram.getProcessedFiles() + ", directories=" + histogram.getDistribution() + "]");
 	}
 
 	private void printFileProcessed(String path) {
@@ -127,6 +131,44 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param lines
 	 */
 	private void processFile(List<String> lines){
+		for (String line : lines) {
+			prepareAndSearchChars(line);
+			histogram.setLines(processedLineCounter.incrementAndGet());
+		}
 
 	}
+
+	private void prepareAndSearchChars(String line) {
+		char letter ='a';
+		int result = 0;
+		char[] lineAsChars = line.toCharArray();
+		long[] charCounterArray = histogram.getDistribution();
+
+		for (int i=0; i<26; i++ ) {
+			long subResult = stingMatching(lineAsChars, letter);
+
+			letter+= i;
+			charCounterArray[i]  = subResult;
+		}
+		histogram.setDistribution(charCounterArray);
+	}
+
+
+	public static long stingMatching(char[] lines, char letter) {
+		int alength = lines.length;
+		long counter = 0;
+		
+		if (alength == 0) {
+			return counter = 0;
+		}
+		for (int i = 0; i < alength; i++) {
+			if (letter == lines[i]) {
+				counter++;
+					}
+			i++;
+		}
+		return counter;
+	}
+
+
 }
