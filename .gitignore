@@ -12,7 +12,7 @@
 .idea/**/dictionaries
 .idea/**/shelf
 .gradle
-/build/
+Assignment1/build/
 gradle-app.setting
 !gradle-wrapper.jar
 .gradletasknamecache
