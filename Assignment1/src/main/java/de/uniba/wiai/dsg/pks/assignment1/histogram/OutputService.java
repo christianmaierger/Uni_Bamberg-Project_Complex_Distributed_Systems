@@ -22,7 +22,7 @@ public class OutputService {
      * intermediary result of the histogram. Also increments the attribute lineNumber of this OutputService.
      * @param directoryPath path of the directory that has been processed
      */
-    void logProcessedDirectory(String directoryPath){
+    public void logProcessedDirectory(String directoryPath){
         StringBuilder stringBuilder = new StringBuilder();
         Formatter formatter = new Formatter(stringBuilder);
         formatter.format("N: %d - ", lineNumber);
@@ -41,7 +41,7 @@ public class OutputService {
      * attribute lineNumber of this OutputService.
      * @param filePath path of the file that has been finished
      */
-    void logProcessedFile(String filePath){
+    public void logProcessedFile(String filePath){
         StringBuilder stringBuilder = new StringBuilder();
         Formatter formatter = new Formatter(stringBuilder);
         formatter.format("N: %d - ", lineNumber);

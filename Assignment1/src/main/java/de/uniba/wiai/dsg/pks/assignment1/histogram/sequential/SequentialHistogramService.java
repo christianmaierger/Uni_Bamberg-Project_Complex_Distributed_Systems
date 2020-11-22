@@ -3,11 +3,21 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
+import net.jcip.annotations.NotThreadSafe;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
+@NotThreadSafe
 public class SequentialHistogramService implements HistogramService {
-	private Histogram histogram = new Histogram();
+	private final Histogram histogram = new Histogram();
+	private final OutputService out = new OutputService(histogram);
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -41,7 +51,11 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		throw new UnsupportedOperationException("Implement here");
+		//TODO: sollte auf Interrupt reagieren
+		processDirectory(rootDirectory, fileExtension);
+		// increment number of directories because now root directory has been processed as well
+		incrementNumberOfDirectories();
+		return histogram;
 	}
 
 	@Override
@@ -60,13 +74,31 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param rootDirectory
 	 * @param fileExtension
 	 */
-	private void processDirectory(String rootDirectory, String fileExtension){
+	private void processDirectory(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		Path folder = Paths.get(rootDirectory);
+		try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
+			for(Path path: stream){
+				if (Files.isDirectory(path)){
+					processDirectory(path.toString(), fileExtension);
+					incrementNumberOfDirectories();
+					out.logProcessedDirectory(path.toString());
+				} else if (Files.isRegularFile(path)){
+					incrementNumberOfFiles();
+					if (path.getFileName().toString().endsWith(fileExtension)){
+						List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+						processFile(lines);
+						out.logProcessedFile(path.toString());
+					}
+				}
+			}
+		} catch (IOException io){
+			throw new HistogramServiceException("I/O error occurred while reading folders and files.");
+		}
 
 	}
 
 	/**
 	 * Takes a file represented as a List of Strings and counts its lines as well as each letter.
-	 * Afterwards, it has to call the logging method in Output Service.
 	 * It updates the histogram with respect to:
 	 * - letter array
 	 * - number of lines
@@ -75,6 +107,55 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param lines
 	 */
 	private void processFile(List<String> lines){
+		// lines
+		int linesInFile = lines.size();
+		addToNumberOfLines(linesInFile);
 
+		// processed file
+		incrementNumberOfProcessedFiles();
+
+		// letter distribution
+		for (String line: lines) {
+			countLettersInLine(line);
+		}
+	}
+
+	private void countLettersInLine(String line){
+		for(int x = 0; x < line.length(); x++){
+
+			char character = line.charAt(x);
+			int asciiValue = (int) character;
+
+			if(asciiValue >= 65 && asciiValue <= 90){
+				// Uppercase letters to lowercase
+				asciiValue = (int) String.valueOf(character).toLowerCase().toCharArray()[0];
+			}
+			if(asciiValue >= 97 && asciiValue <= 122){
+				// will only increment for lowercase letters
+				incrementDistributionAtX(asciiValue - 97);
+			}
+		}
+	}
+
+	private void incrementNumberOfFiles(){
+		histogram.setFiles(histogram.getFiles() + 1);
+	}
+
+	private void incrementNumberOfProcessedFiles(){
+		histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
+	}
+
+	private void addToNumberOfLines(int x){
+		histogram.setLines(histogram.getLines() + x);
+	}
+
+	private void incrementNumberOfDirectories(){
+		histogram.setDirectories(histogram.getDirectories() + 1);
+	}
+
+	private void incrementDistributionAtX(int x){
+		long[] newDistribution = histogram.getDistribution();
+		newDistribution[x]++;
+		histogram.setDistribution(newDistribution);
 	}
 }
