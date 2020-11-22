@@ -36,11 +36,6 @@ public class SequentialHistogramService implements HistogramService {
 
 
 	/**
-	 * Diese Methode muss eine HistogramServiceException werfen, wenn es einen Interrupt gibt. Der Interrupt
-	 * muss nicht hier in dieser Methode erkannt werden, aber auf jeden Fall soll diese hier beim einem Interrupt
-	 * letztlich eine HistogramServiceException werfen. Die Prozessierung sollte danach abgebrochen werden und
-	 * nichts mehr auf der Console ausgegeben werden.
-	 *
 	 *
 	 * @param rootDirectory
 	 *            the directory to start from
@@ -51,10 +46,15 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		//TODO: sollte auf Interrupt reagieren
-		processDirectory(rootDirectory, fileExtension);
-		// increment number of directories because now root directory has been processed as well
-		incrementNumberOfDirectories();
+		try{
+			processDirectory(rootDirectory, fileExtension);
+			// increment number of directories because now root directory has been processed as well
+			incrementNumberOfDirectories();
+		} catch (InterruptedException | IOException exception) {
+			throw new HistogramServiceException(exception.getMessage());
+		}
+
+
 		return histogram;
 	}
 
@@ -74,10 +74,13 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param rootDirectory
 	 * @param fileExtension
 	 */
-	private void processDirectory(String rootDirectory, String fileExtension) throws HistogramServiceException {
+	private void processDirectory(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
 		Path folder = Paths.get(rootDirectory);
 		try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
 			for(Path path: stream){
+				if(Thread.currentThread().isInterrupted()){
+					throw new InterruptedException("Execution has been interrupted.");
+				}
 				if (Files.isDirectory(path)){
 					processDirectory(path.toString(), fileExtension);
 					incrementNumberOfDirectories();
@@ -92,7 +95,7 @@ public class SequentialHistogramService implements HistogramService {
 				}
 			}
 		} catch (IOException io){
-			throw new HistogramServiceException("I/O error occurred while reading folders and files.");
+			throw new IOException( "I/O error occurred while reading folders and files.");
 		}
 
 	}
@@ -100,11 +103,11 @@ public class SequentialHistogramService implements HistogramService {
 	/**
 	 * Takes a file represented as a List of Strings and counts its lines as well as each letter.
 	 * It updates the histogram with respect to:
-	 * - letter array
-	 * - number of lines
+	 * - number of lines processed
 	 * - number of processed files
+	 * - distribution of letters found in the processed file
 	 *
-	 * @param lines
+	 * @param lines the lines while together form a file
 	 */
 	private void processFile(List<String> lines){
 		// lines
@@ -126,13 +129,13 @@ public class SequentialHistogramService implements HistogramService {
 			char character = line.charAt(x);
 			int asciiValue = (int) character;
 
-			if(asciiValue >= 65 && asciiValue <= 90){
+			if(asciiValue >= 'A' && asciiValue <= 'Z'){
 				// Uppercase letters to lowercase
 				asciiValue = (int) String.valueOf(character).toLowerCase().toCharArray()[0];
 			}
-			if(asciiValue >= 97 && asciiValue <= 122){
+			if(asciiValue >= 'a' && asciiValue <= 'z'){
 				// will only increment for lowercase letters
-				incrementDistributionAtX(asciiValue - 97);
+				incrementDistributionAtX(asciiValue - 'a');
 			}
 		}
 	}
@@ -154,8 +157,6 @@ public class SequentialHistogramService implements HistogramService {
 	}
 
 	private void incrementDistributionAtX(int x){
-		long[] newDistribution = histogram.getDistribution();
-		newDistribution[x]++;
-		histogram.setDistribution(newDistribution);
+		histogram.getDistribution()[x]++;
 	}
 }
