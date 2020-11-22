@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 		import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 		import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 		import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+		import de.uniba.wiai.dsg.pks.assignment.shared.PrintService;
 
 		import java.io.IOException;
 		import java.nio.charset.StandardCharsets;
@@ -10,8 +11,6 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 		import java.nio.file.Files;
 		import java.nio.file.Path;
 		import java.nio.file.Paths;
-		import java.util.Arrays;
-		import java.util.LinkedList;
 		import java.util.List;
 		import java.util.concurrent.atomic.AtomicInteger;
 		import java.util.concurrent.atomic.AtomicLong;
@@ -19,12 +18,70 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 public class SequentialHistogramService implements HistogramService {
 	private Histogram histogram = new Histogram();
 	// vielleicht unnätig, aber dachte ich machs gleich atomic mit incrementAndGet
-	AtomicLong dirCounter = new AtomicLong(0);
-	AtomicLong fileCounter = new AtomicLong(0);
-	AtomicLong processedFileCounter = new AtomicLong(0);
-	AtomicInteger processedLineCounter = new AtomicInteger(0);
-	AtomicInteger printLineCounter = new AtomicInteger(0);
+	private AtomicLong dirCounter = new AtomicLong(0);
+	private AtomicLong fileCounter = new AtomicLong(0);
+	private AtomicLong processedFileCounter = new AtomicLong(0);
+	private AtomicInteger processedLineCounter = new AtomicInteger(0);
+	private AtomicInteger printLineCounter = new AtomicInteger(0);
+	private PrintService printService = new PrintService(this);
+	private boolean lineEmpty=false;
 
+	public Histogram getHistogram() {
+		return histogram;
+	}
+
+	public void setHistogram(Histogram histogram) {
+		this.histogram = histogram;
+	}
+
+	public AtomicLong getDirCounter() {
+		return dirCounter;
+	}
+
+	public void setDirCounter(AtomicLong dirCounter) {
+		this.dirCounter = dirCounter;
+	}
+
+	public AtomicLong getFileCounter() {
+		return fileCounter;
+	}
+
+	public void setFileCounter(AtomicLong fileCounter) {
+		this.fileCounter = fileCounter;
+	}
+
+	public AtomicLong getProcessedFileCounter() {
+		return processedFileCounter;
+	}
+
+	public void setProcessedFileCounter(AtomicLong processedFileCounter) {
+		this.processedFileCounter = processedFileCounter;
+	}
+
+	public AtomicInteger getProcessedLineCounter() {
+		return processedLineCounter;
+	}
+
+	public void setProcessedLineCounter(AtomicInteger processedLineCounter) {
+		this.processedLineCounter = processedLineCounter;
+	}
+
+	public AtomicInteger getPrintLineCounter() {
+		return printLineCounter;
+	}
+
+	public void setPrintLineCounter(int printLineCounter) {
+
+		this.printLineCounter = new AtomicInteger(printLineCounter);;
+	}
+
+	public boolean isLineEmpty() {
+		return lineEmpty;
+	}
+
+	public void setLineEmpty(boolean lineEmpty) {
+		this.lineEmpty = lineEmpty;
+	}
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -40,6 +97,8 @@ public class SequentialHistogramService implements HistogramService {
 
 	// Idee: Histogramm sollte im Master-Thread erstellt werden und dann an alle Threads gegeben werden. Bei der
 	// sequentiellen Abarbeitung kann jedoch direkt oben als Variable ein neues erstellt werden, da es hier nur eins gibt.
+
+
 
 
 	/**
@@ -58,7 +117,13 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		throw new UnsupportedOperationException("Implement here");
+		try {
+			processDirectory(rootDirectory, fileExtension);
+		}
+		catch (Exception e) {
+			throw new UnsupportedOperationException("Implement here");
+		}
+		return histogram;
 	}
 
 	@Override
@@ -98,27 +163,16 @@ public class SequentialHistogramService implements HistogramService {
 						 histogram.setProcessedFiles(processedFileCounter.incrementAndGet());
 						 // TODO Process lines
 						 processFile(lines);
-						 printFileProcessed(currentDirectory);
+						 printService.printFileProcessed(currentDirectory);
 						 }
 					 }
 				 }
 			 // dir müsste hier finished sein, log callen?
 			 // müsste passen um das jeweilige dir auszugeben, wenn for schleife durch ist, andere dirs sind ja in rekursiven calls
-					printDirectoryProcessed(currentDirectory);
+					printService.printDirectoryProcessed(currentDirectory);
 			 }
 	}
 
-	private void printDirectoryProcessed(String dir) {
-		printLineCounter.incrementAndGet();
-		System.out.println("N:"+ printLineCounter + "- Directory " + dir + " finished \n" + "[distr=" +
-				Arrays.toString(histogram.getDistribution())+", \n"+  "lines=" + histogram.getLines() + ", files=" +
-				histogram.getFiles() +  ", processedFiles=" + histogram.getProcessedFiles() + ", directories=" + histogram.getDistribution() + "]");
-	}
-
-	private void printFileProcessed(String path) {
-		printLineCounter.incrementAndGet();
-		System.out.println("N:"+ printLineCounter + "- File " + path + " finished !");
-	}
 
 	/**
 	 * Takes a file represented as a List of Strings and counts its lines as well as each letter.
@@ -141,31 +195,37 @@ public class SequentialHistogramService implements HistogramService {
 	private void prepareAndSearchChars(String line) {
 		char letter ='a';
 		int result = 0;
-		char[] lineAsChars = line.toCharArray();
+		char[] lineAsChars = line.toLowerCase().toCharArray();
 		long[] charCounterArray = histogram.getDistribution();
 
-		for (int i=0; i<26; i++ ) {
-			long subResult = stingMatching(lineAsChars, letter);
 
-			letter+= i;
-			charCounterArray[i]  = subResult;
-		}
+		for (int i=0; i<26; i++ ) {
+			if (lineEmpty==true) {
+				break;
+			}
+				long subResult = stingMatching(lineAsChars, letter);
+				letter++;
+				charCounterArray[i] += subResult;
+			}
+		lineEmpty=false;
 		histogram.setDistribution(charCounterArray);
 	}
 
 
-	public static long stingMatching(char[] lines, char letter) {
-		int alength = lines.length;
+	public long stingMatching(char[] line, char letter) {
+		int alength = line.length;
 		long counter = 0;
-		
+
+
 		if (alength == 0) {
+			lineEmpty = true;
 			return counter = 0;
 		}
+		lineEmpty=false;
 		for (int i = 0; i < alength; i++) {
-			if (letter == lines[i]) {
+			if (letter == line[i]) {
 				counter++;
 					}
-			i++;
 		}
 		return counter;
 	}
