@@ -3,7 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
