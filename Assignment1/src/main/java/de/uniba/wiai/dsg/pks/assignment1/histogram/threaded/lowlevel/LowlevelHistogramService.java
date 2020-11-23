@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class LowlevelHistogramService implements HistogramService {
-	MasterThread masterThread = new MasterThread(1);
+	MasterThread masterThread;
 
 	public LowlevelHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -24,8 +25,9 @@ public class LowlevelHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		masterThread= new MasterThread(1, SyncType.LOWLEVEL);
 		try{
-			processDirectory(rootDirectory, fileExtension);
+			masterThread.startProcessing(rootDirectory, fileExtension);
 			// increment number of directories because now root directory has been processed as well
 			incrementNumberOfDirectories();
 		} catch (InterruptedException | IOException exception) {
@@ -53,7 +55,9 @@ public class LowlevelHistogramService implements HistogramService {
 					throw new InterruptedException("Execution has been interrupted.");
 				}
 				if (Files.isDirectory(path)){
-
+					processDirectory(path.toString(), fileExtension);
+					incrementNumberOfDirectories();
+					out.logProcessedDirectory(path.toString());
 				} else if (Files.isRegularFile(path)){
 					incrementNumberOfFiles();
 					if (path.getFileName().toString().endsWith(fileExtension)){

@@ -19,14 +19,16 @@ public class MasterThread extends Thread{
     private Histogram histogram = new Histogram();
     private int currentNumberOfThreads;
     private int maxNumberOfThreads;
+    private SyncType type;
 
     // Es muss sichergestellt sein, dass es nie mehr current als max Threads gibt.
 
 
-    public MasterThread(int blockingCoefficient){
+    public MasterThread(int blockingCoefficient, SyncType type){
        this.currentNumberOfThreads = 0;
        int kernels = Runtime.getRuntime().availableProcessors();
        this.maxNumberOfThreads = kernels / (1 - blockingCoefficient);
+       this.type=type;
     }
 
     /**
@@ -35,8 +37,8 @@ public class MasterThread extends Thread{
      * @param rootFolder
      * @param fileExtension
      */
-    public void startProcessing(String rootFolder, String fileExtension, SyncType type){
-        if(type.equals(SyncType.HIGHLEVEL)){
+    public void startProcessing(String rootFolder, String fileExtension){
+        if(type.equals(SyncType.LOWLEVEL)){
 
         } else {
 
@@ -49,11 +51,11 @@ public class MasterThread extends Thread{
         return "SequentialHistogramService";
     }
 
-   
+
 
     @Override
     public void run() {
-
+        startProcessing(rootFolder, fileExtension, type);
     }
 
     public static void main(String[] args) {

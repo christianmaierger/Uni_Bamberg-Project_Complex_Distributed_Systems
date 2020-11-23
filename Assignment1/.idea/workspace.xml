@@ -24,6 +24,7 @@
   <component name="ChangeListManager">
     <list default="true" id="74bc530b-2c92-49a4-9301-0fbaa6686b1a" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/src/main/java/de/uniba/wiai/dsg/pks/assignment1/histogram/threaded/MasterThread.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/uniba/wiai/dsg/pks/assignment1/histogram/threaded/MasterThread.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/uniba/wiai/dsg/pks/assignment1/histogram/threaded/lowlevel/LowlevelHistogramService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/uniba/wiai/dsg/pks/assignment1/histogram/threaded/lowlevel/LowlevelHistogramService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -147,7 +148,7 @@
       <workItem from="1605917120012" duration="896000" />
       <workItem from="1605957528333" duration="16337000" />
       <workItem from="1606066195785" duration="9508000" />
-      <workItem from="1606125804412" duration="8666000" />
+      <workItem from="1606125804412" duration="12282000" />
     </task>
     <servers />
   </component>
