@@ -14,9 +14,10 @@ public class PrintService {
 
     public void printDirectoryProcessed(String directory) {
         histService.setPrintLineCounter(histService.getPrintLineCounter().incrementAndGet());
-        int index = directory.lastIndexOf('\\');
-        String dir = directory.substring(0,index);
-        index = directory.lastIndexOf("data");
+       /* int index = directory.lastIndexOf('\\');
+        String dir = directory.substring(0,index);*/
+        int index = directory.lastIndexOf("data");
+        String dir = "";
         dir = directory.substring(index);
         dir= "...\\"+dir;
         System.out.println("N:"+ histService.getPrintLineCounter() + "- Directory " + dir + " finished \n" + "[distr=" +

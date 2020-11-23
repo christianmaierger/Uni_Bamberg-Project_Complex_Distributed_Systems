@@ -121,7 +121,8 @@ public class SequentialHistogramService implements HistogramService {
 			processDirectory(rootDirectory, fileExtension);
 		}
 		catch (Exception e) {
-			throw new UnsupportedOperationException("Implement here");
+			//throw new UnsupportedOperationException("Implement here");
+			throw new HistogramServiceException();
 		}
 		return histogram;
 	}
@@ -152,6 +153,7 @@ public class SequentialHistogramService implements HistogramService {
 					 // TODO DIRECTORY
 					//  should be done by making dir a string and calling method recursively?
 					this.processDirectory(currentDirectory, fileExtension);
+					printService.printDirectoryProcessed(currentDirectory);
 					histogram.setDirectories(dirCounter.incrementAndGet());
 				} else if (Files.isRegularFile (path)) {
 					// hier müssten dann die files incrementiert werden, ist aber ne Einfügung!?
@@ -167,9 +169,6 @@ public class SequentialHistogramService implements HistogramService {
 						 }
 					 }
 				 }
-			 // dir müsste hier finished sein, log callen?
-			 // müsste passen um das jeweilige dir auszugeben, wenn for schleife durch ist, andere dirs sind ja in rekursiven calls
-					printService.printDirectoryProcessed(currentDirectory);
 			 }
 	}
 
@@ -203,10 +202,10 @@ public class SequentialHistogramService implements HistogramService {
 			if (lineEmpty==true) {
 				break;
 			}
-				long subResult = stingMatching(lineAsChars, letter);
-				letter++;
-				charCounterArray[i] += subResult;
-			}
+			long subResult = stingMatching(lineAsChars, letter);
+			letter++;
+			charCounterArray[i] += subResult;
+		}
 		lineEmpty=false;
 		histogram.setDistribution(charCounterArray);
 	}
