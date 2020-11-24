@@ -53,8 +53,6 @@ public class SequentialHistogramService implements HistogramService {
 		} catch (InterruptedException | IOException exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}
-
-
 		return histogram;
 	}
 
@@ -64,12 +62,6 @@ public class SequentialHistogramService implements HistogramService {
 	}
 
 	/**
-	 * Scans a directory with the given Code Snippet 2 from the Assignment sheet and
-	 * starts the processing of either directories by calling this method again or the
-	 * processing of a file by calling method fileprocessing.
-	 * Increments the number of processed directories by one and also calls the log-method for finished
-	 * directories. Also increments the number of files in the histogram (just files, not processed files).
-	 * The number of processed files is considered in the processFile method.
 	 *
 	 * @param rootDirectory
 	 * @param fileExtension
@@ -130,11 +122,9 @@ public class SequentialHistogramService implements HistogramService {
 			int asciiValue = (int) character;
 
 			if(asciiValue >= 'A' && asciiValue <= 'Z'){
-				// Uppercase letters to lowercase
-				asciiValue = (int) String.valueOf(character).toLowerCase().toCharArray()[0];
+				incrementDistributionAtX(asciiValue - 'A');
 			}
 			if(asciiValue >= 'a' && asciiValue <= 'z'){
-				// will only increment for lowercase letters
 				incrementDistributionAtX(asciiValue - 'a');
 			}
 		}
