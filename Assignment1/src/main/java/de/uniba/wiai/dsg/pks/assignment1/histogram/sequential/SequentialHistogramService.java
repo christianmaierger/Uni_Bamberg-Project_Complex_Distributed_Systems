@@ -16,8 +16,8 @@ import java.util.List;
 
 @NotThreadSafe
 public class SequentialHistogramService implements HistogramService {
-	private final Histogram histogram = new Histogram();
-	private final OutputService out = new OutputService(histogram);
+	private Histogram histogram;
+	private OutputService out;
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -46,6 +46,8 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		histogram= new Histogram();
+		out = new OutputService(histogram);
 		try{
 			processDirectory(rootDirectory, fileExtension);
 			// increment number of directories because now root directory has been processed as well

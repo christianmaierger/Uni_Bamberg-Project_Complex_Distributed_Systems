@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
@@ -17,6 +18,10 @@ import java.util.List;
 public class LowlevelHistogramService implements HistogramService {
 	MasterThread masterThread;
 
+	//tut says he would start start and end masterthread in this class
+	//private final Histogram histogram = new Histogram();
+	// private final OutputService out = new OutputService(histogram);
+
 	public LowlevelHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
 		// but you can add code below
@@ -25,58 +30,22 @@ public class LowlevelHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		masterThread= new MasterThread(1, SyncType.LOWLEVEL);
+		masterThread= new MasterThread(0.5, SyncType.LOWLEVEL, rootDirectory, fileExtension);
 		try{
-			masterThread.startProcessing(rootDirectory, fileExtension);
-			// increment number of directories because now root directory has been processed as well
-			incrementNumberOfDirectories();
-		} catch (InterruptedException | IOException exception) {
+			// calculatehistogram is called in main method, I guess there is no better point then starting masterThread here
+			// and "he" should than start to process the directories
+			masterThread.start();
+
+		} catch (Exception exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}
-		return histogram;
+		return masterThread.getHistogram();
 	}
-
-	/**
-	 * Scans a directory with the given Code Snippet 2 from the Assignment sheet and
-	 * starts the processing of either directories by calling this method again or the
-	 * processing of a file by calling method fileprocessing.
-	 * Increments the number of processed directories by one and also calls the log-method for finished
-	 * directories. Also increments the number of files in the histogram (just files, not processed files).
-	 * The number of processed files is considered in the processFile method.
-	 *
-	 * @param rootDirectory
-	 * @param fileExtension
-	 */
-	private void processDirectoryLowLevel(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
-		Path folder = Paths.get(rootDirectory);
-		try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
-			for(Path path: stream){
-				if(Thread.currentThread().isInterrupted()){
-					throw new InterruptedException("Execution has been interrupted.");
-				}
-				if (Files.isDirectory(path)){
-					processDirectory(path.toString(), fileExtension);
-					incrementNumberOfDirectories();
-					out.logProcessedDirectory(path.toString());
-				} else if (Files.isRegularFile(path)){
-					incrementNumberOfFiles();
-					if (path.getFileName().toString().endsWith(fileExtension)){
-						List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-						processFile(lines);
-						out.logProcessedFile(path.toString());
-					}
-				}
-			}
-		} catch (IOException io){
-			throw new IOException( "I/O error occurred while reading folders and files.");
-		}
-
-	}
-
 
 	@Override
 	public String toString() {
 		return "LowlevelHistogramService";
 	}
+
 
 }

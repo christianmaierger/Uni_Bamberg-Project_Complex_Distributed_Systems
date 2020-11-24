@@ -11,7 +11,7 @@ public class ThreadsafeHistogram  {
     private AtomicLong processedFileCounter = new AtomicLong(0);
     private AtomicInteger processedLineCounter = new AtomicInteger(0);
     private AtomicInteger printLineCounter = new AtomicInteger(0);
-    private PrintService printService = new PrintService(this);
+   // private PrintService printService = new PrintService(this);
     private boolean lineEmpty=false;
 
 
@@ -64,10 +64,6 @@ public class ThreadsafeHistogram  {
         this.lineEmpty = lineEmpty;
     }
 
-    public SequentialHistogramService() {
-        // REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
-        // but you can add code below
-    }
 
 
 
