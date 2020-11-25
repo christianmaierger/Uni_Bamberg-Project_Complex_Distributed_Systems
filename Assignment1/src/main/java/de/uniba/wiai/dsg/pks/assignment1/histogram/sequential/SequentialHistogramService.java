@@ -50,8 +50,9 @@ public class SequentialHistogramService implements HistogramService {
 		out = new OutputService(histogram);
 		try{
 			processDirectory(rootDirectory, fileExtension);
-			// increment number of directories because now root directory has been processed as well
+			// increment number of directories because now root directory has been processed as well also has to be printed
 			incrementNumberOfDirectories();
+            out.logProcessedDirectory(rootDirectory);
 		} catch (InterruptedException | IOException exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}

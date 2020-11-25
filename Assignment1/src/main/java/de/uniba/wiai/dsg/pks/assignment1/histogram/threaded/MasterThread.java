@@ -108,10 +108,11 @@ public class MasterThread extends Thread{
         mainWorker.start();
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
+                System.out.println("Pfad ist:  "+ path);
                 if(Thread.currentThread().isInterrupted()){
                     throw new InterruptedException("Execution has been interrupted.");
                 }
-                if (Files.isDirectory(path)){
+                if (Files.isDirectory(path) && !path.toString().equals(rootDirectory)){
                     LowLevelWorker worker = new LowLevelWorker(this, path.toString(), fileExtension);
                     worker.start();
                     incrementNumberOfDirectories();
