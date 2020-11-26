@@ -1,8 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
+import de.uniba.wiai.dsg.pks.assignment.model.Service;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputServiceSequential;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel.HighLevelWorker;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelWorker;
 
@@ -11,94 +12,89 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.Semaphore;
 
 /**
  * Der Master-Thread, der die einzelnen Verzeichnisthreads startet.
  */
 public class MasterThread extends Thread{
     private final Histogram histogram;
-    private final List<Thread> workerList;
-    private final List<String> directoriesToProcess;
+    private final String rootFolder;
     private final String fileExtension;
-    private final SyncType syncType;
-    private final LowLevelSemaphore semaphore;
-    final OutputService out;
+    private final Service syncType;
+    private final Semaphore semaphore;
+    private final OutputServiceSequential out;
 
-    private final Object lock = new Object();
-
-    // Es muss sichergestellt sein, dass es nie mehr current als max Threads gibt.
-
-    public MasterThread(double blockingCoefficient, String fileExtension, SyncType type){
+    public MasterThread(String rootFolder, String fileExtension, Histogram histogram, Service type, double blockingCoefficient){
        this.fileExtension = fileExtension;
-       this.histogram = new Histogram();
+       this.histogram = histogram;
        this.syncType = type;
-       this.workerList = new ArrayList<>();
-       this.directoriesToProcess = new ArrayList<>();
+       this.rootFolder = rootFolder;
+       this.out = new OutputServiceSequential();
        int kernels = Runtime.getRuntime().availableProcessors();
        int maxNumberOfThreads = (int) Math.ceil(kernels / (1 - blockingCoefficient));
-       this.semaphore = new LowLevelSemaphore(maxNumberOfThreads);
-       this.out = new OutputService();
+       if(Service.LOW_LEVEL.equals(type)){
+           this.semaphore = new LowLevelSemaphore(maxNumberOfThreads);
+       } else {
+           this.semaphore = new Semaphore(maxNumberOfThreads);
+       }
+
+
     }
 
+    @Override
+    public void run(){
+        try {
+            traverseDirectory(rootFolder);
+        } catch (IOException | InterruptedException exception) {
+            throw new RuntimeException(exception.getMessage());
+        }
+    }
 
     /**
      * Starts the processing. Starts one thread per directory, but the current number of
      * threads should not be more than the maximal number of threads.
      * @param rootFolder
      */
-    public Histogram traverseRootDirectory(String rootFolder) throws IOException {
+    public void traverseDirectory(String rootFolder) throws IOException, InterruptedException {
         //look for directories in folder
         Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if (Files.isDirectory(path)){
-                    traverseRootDirectory(path.toString());
+                    traverseDirectory(path.toString());
                 }
-
             }
         } catch (IOException io){
             throw new IOException("I/O error occurred while reading folders and files.");
         }
 
-        //process files in folder
-        semaphore.acquire();
-        Thread rootWorker = new LowLevelWorker(rootFolder, fileExtension, histogram, this, out, semaphore);
-        rootWorker.start();
+        processFilesInFolder(rootFolder);
 
-        //TODO: Master-Thread muss traversieren
         //TODO: Gracefully interrupt all threads
-        //TODO: LOGGING am Endo vom Prozessieren
-        return histogram;
+
+    }
+
+    private void processFilesInFolder(String rootFolder) throws InterruptedException {
+        semaphore.acquire();
+        Thread worker;
+        if(syncType.equals(Service.LOW_LEVEL)){
+            worker = new LowLevelWorker(rootFolder, fileExtension, histogram, out, semaphore);
+        } else {
+            //TODO: Highlevel
+            worker = new HighLevelWorker(rootFolder, fileExtension, histogram, semaphore);
+        }
+        try {
+            worker.start();
+            worker.join();
+        } catch (InterruptedException | RuntimeException exception ) {
+            throw new InterruptedException(exception.getMessage());
+        }
     }
 
     @Override
     public String toString() {
         return "SequentialHistogramService";
     }
-
-    public void addDirectory(String path){
-        synchronized (lock){
-            directoriesToProcess.add(path);
-        }
-
-    }
-
-/**    private void createWorkers(String rootFolder, String fileExtension) {
-        if (syncType.equals(SyncType.HIGHLEVEL)) {
-            //TODO: start High Level here
-            for (int i = 0; i < maxNumberOfThreads; i++) {
-                Thread worker = new LowLevelWorker(rootFolder, fileExtension, histogram, this);
-                workerList.add(worker);
-            }
-        } else {
-            for (int i = 0; i < maxNumberOfThreads; i++) {
-                Thread worker = new LowLevelWorker(rootFolder, fileExtension, histogram, this);
-                workerList.add(worker);
-            }
-        }
-    }
-*/
 
 }

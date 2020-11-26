@@ -1,7 +1,6 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
+package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputServiceSequential;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,19 +11,17 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-public class LowLevelWorker extends Thread {
+public class HighLevelWorker extends Thread {
     private final String directory;
     private final String fileExtension;
     private final Histogram histogram;
     private final Object lock = new Object();
-    private final OutputServiceSequential out;
     private final Semaphore semaphore;
 
-    public LowLevelWorker(String directory, String fileExtension, Histogram histogram, OutputServiceSequential out, Semaphore semaphore){
+    public HighLevelWorker(String directory, String fileExtension, Histogram histogram, Semaphore semaphore){
         this.directory = directory;
         this.fileExtension = fileExtension;
         this.histogram = histogram;
-        this.out = out;
         this.semaphore = semaphore;
     }
 
@@ -37,6 +34,7 @@ public class LowLevelWorker extends Thread {
                     if(Thread.currentThread().isInterrupted()){
                         throw new InterruptedException("Execution has been interrupted.");
                     }
+
                     //count
                     Histogram histogramForCurrentFile = new Histogram();
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
@@ -56,7 +54,7 @@ public class LowLevelWorker extends Thread {
         }
         synchronized (lock){
             incrementNumberOfDirectories();
-            out.logProcessedDirectory(directory, histogram);
+            //TODO: LOG DIRECTORY
         }
         semaphore.release();
     }
@@ -70,7 +68,7 @@ public class LowLevelWorker extends Thread {
                 for(int x = 0; x < 26; x++){
                     histogram.getDistribution()[x] += updateHistogram.getDistribution()[x];
                 }
-                out.logProcessedFile(path.toString());
+                //TODO: LOG FILE
             }
         }
     }

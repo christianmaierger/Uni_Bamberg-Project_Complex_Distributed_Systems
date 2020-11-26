@@ -3,7 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.sequential;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputServiceSequential;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
@@ -17,7 +17,7 @@ import java.util.List;
 @NotThreadSafe
 public class SequentialHistogramService implements HistogramService {
 	private Histogram histogram;
-	private OutputService out;
+	private OutputServiceSequential out;
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -48,7 +48,7 @@ public class SequentialHistogramService implements HistogramService {
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
 		histogram = new Histogram();
-		out = new OutputService();
+		out = new OutputServiceSequential();
 
 		try{
 			processDirectory(rootDirectory, fileExtension);

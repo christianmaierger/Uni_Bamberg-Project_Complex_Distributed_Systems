@@ -9,7 +9,7 @@ import java.util.Formatter;
  * Diese Klasse kümmert sich nur um den Output auf der Konsole. Die kann später
  * hoffentlich einfach in einen Thread gepackt werden.
  */
-public class OutputService {
+public class OutputServiceSequential {
     private int lineNumber = 1;
 
     /**
