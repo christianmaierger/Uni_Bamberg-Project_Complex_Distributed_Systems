@@ -22,7 +22,7 @@ public class LowLevelWorker extends Thread {
        this.extension = extension;
     }
 
-    public void processDirectoryWithWorker(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
+    public void  processDirectoryWithWorker(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
         Path folder = Paths.get(rootDirectory);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
