@@ -16,13 +16,14 @@ import java.util.List;
 
 @NotThreadSafe
 public class SequentialHistogramService implements HistogramService {
-	private final Histogram histogram = new Histogram();
-	private final OutputService out = new OutputService(histogram);
+	private Histogram histogram;
+	private OutputService out;
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
 		// but you can add code below
 	}
+
 
 	// Was bei mehreren Thread kritisch wird:
 	// - Jeder Thread muss ein anderes Verzeichnis machen, es dürfen nicht zwei Threads dasselbe Verzeichnis anschauen.
@@ -46,14 +47,17 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		histogram = new Histogram();
+		out = new OutputService();
+
 		try{
 			processDirectory(rootDirectory, fileExtension);
 			// increment number of directories because now root directory has been processed as well
 			incrementNumberOfDirectories();
+			out.logProcessedDirectory(rootDirectory, histogram);
 		} catch (InterruptedException | IOException exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}
-
 
 		return histogram;
 	}
@@ -84,7 +88,7 @@ public class SequentialHistogramService implements HistogramService {
 				if (Files.isDirectory(path)){
 					processDirectory(path.toString(), fileExtension);
 					incrementNumberOfDirectories();
-					out.logProcessedDirectory(path.toString());
+					out.logProcessedDirectory(path.toString(), histogram);
 				} else if (Files.isRegularFile(path)){
 					incrementNumberOfFiles();
 					if (path.getFileName().toString().endsWith(fileExtension)){
@@ -130,11 +134,9 @@ public class SequentialHistogramService implements HistogramService {
 			int asciiValue = (int) character;
 
 			if(asciiValue >= 'A' && asciiValue <= 'Z'){
-				// Uppercase letters to lowercase
-				asciiValue = (int) String.valueOf(character).toLowerCase().toCharArray()[0];
+				incrementDistributionAtX(asciiValue - 'A');
 			}
 			if(asciiValue >= 'a' && asciiValue <= 'z'){
-				// will only increment for lowercase letters
 				incrementDistributionAtX(asciiValue - 'a');
 			}
 		}

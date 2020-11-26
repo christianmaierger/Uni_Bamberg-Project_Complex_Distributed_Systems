@@ -1,47 +1,76 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelWorker;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Der Master-Thread, der die einzelnen Verzeichnisthreads startet.
  */
 public class MasterThread extends Thread{
-    private Histogram histogram = new Histogram();
-    private int currentNumberOfThreads;
-    private int maxNumberOfThreads;
+    private final Histogram histogram;
+    private final List<Thread> workerList;
+    private final List<String> directoriesToProcess;
+    private final String fileExtension;
+    private final SyncType syncType;
+    private final LowLevelSemaphore semaphore;
+    final OutputService out;
+
+    private final Object lock = new Object();
 
     // Es muss sichergestellt sein, dass es nie mehr current als max Threads gibt.
 
-
-    public MasterThread(int blockingCoefficient){
-       this.currentNumberOfThreads = 0;
+    public MasterThread(double blockingCoefficient, String fileExtension, SyncType type){
+       this.fileExtension = fileExtension;
+       this.histogram = new Histogram();
+       this.syncType = type;
+       this.workerList = new ArrayList<>();
+       this.directoriesToProcess = new ArrayList<>();
        int kernels = Runtime.getRuntime().availableProcessors();
-       this.maxNumberOfThreads = kernels / (1 - blockingCoefficient);
+       int maxNumberOfThreads = (int) Math.ceil(kernels / (1 - blockingCoefficient));
+       this.semaphore = new LowLevelSemaphore(maxNumberOfThreads);
+       this.out = new OutputService();
     }
+
 
     /**
      * Starts the processing. Starts one thread per directory, but the current number of
      * threads should not be more than the maximal number of threads.
      * @param rootFolder
-     * @param fileExtension
      */
-    public void startProcessing(String rootFolder, String fileExtension, SyncType type){
-        if(type.equals(SyncType.HIGHLEVEL)){
+    public Histogram traverseRootDirectory(String rootFolder) throws IOException {
+        //look for directories in folder
+        Path folder = Paths.get(rootFolder);
+        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
+            for(Path path: stream){
+                if (Files.isDirectory(path)){
+                    traverseRootDirectory(path.toString());
+                }
 
-        } else {
-
+            }
+        } catch (IOException io){
+            throw new IOException("I/O error occurred while reading folders and files.");
         }
 
+        //process files in folder
+        semaphore.acquire();
+        Thread rootWorker = new LowLevelWorker(rootFolder, fileExtension, histogram, this, out, semaphore);
+        rootWorker.start();
+
+        //TODO: Master-Thread muss traversieren
+        //TODO: Gracefully interrupt all threads
+        //TODO: LOGGING am Endo vom Prozessieren
+        return histogram;
     }
 
     @Override
@@ -49,39 +78,27 @@ public class MasterThread extends Thread{
         return "SequentialHistogramService";
     }
 
-    /**
-     * Scans a directory with the given Code Snippet 2 from the Assignment sheet and
-     * starts the processing of either directories by calling this method again or the
-     * processing of a file by calling method fileprocessing.
-     * Increments the number of processed directories by one and also calls the log-method for finished
-     * directories. Also increments the number of files in the histogram (just files, not processed files).
-     * The number of processed files is considered in the processFile method.
-     *
-     * @param rootDirectory
-     * @param fileExtension
-     */
-    private void processDirectoryLowLevel(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
-        Path folder = Paths.get(rootDirectory);
-        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
-            for(Path path: stream){
-                if(Thread.currentThread().isInterrupted()){
-                    throw new InterruptedException("Execution has been interrupted.");
-                }
-                if (Files.isDirectory(path)){
-                   
-                } else if (Files.isRegularFile(path)){
-                    incrementNumberOfFiles();
-                    if (path.getFileName().toString().endsWith(fileExtension)){
-                        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-                        processFile(lines);
-                        out.logProcessedFile(path.toString());
-                    }
-                }
-            }
-        } catch (IOException io){
-            throw new IOException( "I/O error occurred while reading folders and files.");
+    public void addDirectory(String path){
+        synchronized (lock){
+            directoriesToProcess.add(path);
         }
 
     }
+
+/**    private void createWorkers(String rootFolder, String fileExtension) {
+        if (syncType.equals(SyncType.HIGHLEVEL)) {
+            //TODO: start High Level here
+            for (int i = 0; i < maxNumberOfThreads; i++) {
+                Thread worker = new LowLevelWorker(rootFolder, fileExtension, histogram, this);
+                workerList.add(worker);
+            }
+        } else {
+            for (int i = 0; i < maxNumberOfThreads; i++) {
+                Thread worker = new LowLevelWorker(rootFolder, fileExtension, histogram, this);
+                workerList.add(worker);
+            }
+        }
+    }
+*/
 
 }

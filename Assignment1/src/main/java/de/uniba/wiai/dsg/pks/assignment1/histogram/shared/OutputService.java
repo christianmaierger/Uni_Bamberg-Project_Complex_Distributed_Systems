@@ -11,18 +11,13 @@ import java.util.Formatter;
  */
 public class OutputService {
     private int lineNumber = 1;
-    Histogram histogram;
-
-    public OutputService(Histogram histogram){
-        this.histogram = histogram;
-    }
 
     /**
      * Prints a message to console that tells the user that the input directory has been finished and outputs the
      * intermediary result of the histogram. Also increments the attribute lineNumber of this OutputService.
      * @param directoryPath path of the directory that has been processed
      */
-    public void logProcessedDirectory(String directoryPath){
+    public void logProcessedDirectory(String directoryPath, Histogram histogram){
         StringBuilder stringBuilder = new StringBuilder();
         Formatter formatter = new Formatter(stringBuilder);
         formatter.format("N: %d - ", lineNumber);
