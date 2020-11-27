@@ -3,6 +3,8 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment.model.Service;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
 public class HighlevelHistogramService implements HistogramService {
 
@@ -13,7 +15,17 @@ public class HighlevelHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		throw new UnsupportedOperationException("Implement here");
+		Histogram histogram = new Histogram();
+		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.HIGH_LEVEL, 0.5);
+
+		try{
+			masterThread.start();
+			masterThread.join();
+		} catch (InterruptedException | RuntimeException exception){
+			masterThread.interrupt();
+			throw new HistogramServiceException(exception.getMessage());
+		}
+		return histogram;
 	}
 
 	@Override

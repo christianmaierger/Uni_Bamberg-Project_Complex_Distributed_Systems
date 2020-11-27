@@ -1,6 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.Message;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.MessageType;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -9,67 +12,75 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.Semaphore;
+
 
 public class HighLevelWorker extends Thread {
-    private final String directory;
-    private final String fileExtension;
-    private final Histogram histogram;
-    private final Object lock = new Object();
-    private final Semaphore semaphore;
+    private final String rootFolder;
+    private final MasterThread masterThread;
 
-    public HighLevelWorker(String directory, String fileExtension, Histogram histogram, Semaphore semaphore){
-        this.directory = directory;
-        this.fileExtension = fileExtension;
-        this.histogram = histogram;
-        this.semaphore = semaphore;
+
+    public HighLevelWorker(String rootFolder, MasterThread masterThread){
+        this.rootFolder = rootFolder;
+        this.masterThread = masterThread;
     }
 
     @Override
     public void run() {
-        Path folder = Paths.get(directory);
+        try{
+            processFilesInDirectory();
+            logFinishedProcessing();
+        } catch (InterruptedException | IOException exception){
+            throw new RuntimeException(exception.getMessage());
+        }
+
+        masterThread.getThreadSemaphore().release();
+    }
+
+    private void logFinishedProcessing() throws InterruptedException {
+        masterThread.getBooleanSemaphore().acquire();
+        try {
+            incrementNumberOfDirectories();
+            logProcessedDirectory();
+        } finally {
+            masterThread.getBooleanSemaphore().release();
+        }
+    }
+
+    private void processFilesInDirectory() throws IOException, InterruptedException {
+        Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if (Files.isRegularFile(path)){
-                    if(Thread.currentThread().isInterrupted()){
-                        throw new InterruptedException("Execution has been interrupted.");
-                    }
 
                     //count
-                    Histogram histogramForCurrentFile = new Histogram();
-                    boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
+                    Histogram countHistogram = new Histogram();
+                    boolean fileExtensionCorrect = path.getFileName().toString().endsWith(masterThread.getFileExtension());
                     if (fileExtensionCorrect){
                         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-                        histogramForCurrentFile = processFileContent(lines);
+                        countHistogram = processFileContent(lines);
                     }
 
                     //update
-                    updateResultsInHistogram(histogramForCurrentFile, fileExtensionCorrect, path);
+                    updateResultsInHistogram(countHistogram, fileExtensionCorrect, path);
                 }
             }
-        } catch (IOException exception){
-            throw new RuntimeException("I/O error occurred while reading folders and files.");
-        } catch (InterruptedException exception){
-            throw new RuntimeException(exception.getMessage());
         }
-        synchronized (lock){
-            incrementNumberOfDirectories();
-            //TODO: LOG DIRECTORY
-        }
-        semaphore.release();
     }
 
-    private void updateResultsInHistogram(Histogram updateHistogram, boolean correctFileExtension, Path path){
-        synchronized (lock){
+    private void updateResultsInHistogram(Histogram updateHistogram, boolean correctFileExtension, Path path) throws InterruptedException {
+        masterThread.getBooleanSemaphore().acquire();
+        try{
             incrementNumberOfFiles();
             if(correctFileExtension){
                 incrementNumberOfProcessedFiles();
                 addToNumberOfLines(updateHistogram.getLines());
                 for(int x = 0; x < 26; x++){
-                    histogram.getDistribution()[x] += updateHistogram.getDistribution()[x];
+                    masterThread.getHistogram().getDistribution()[x] += updateHistogram.getDistribution()[x];
                 }
-                //TODO: LOG FILE
+                logProcessedFile(path.toString());
             }
+        } finally {
+            masterThread.getBooleanSemaphore().release();
         }
     }
 
@@ -108,19 +119,28 @@ public class HighLevelWorker extends Thread {
 
 
     private void incrementNumberOfFiles(){
-        histogram.setFiles(histogram.getFiles() + 1);
+        masterThread.getHistogram().setFiles(masterThread.getHistogram().getFiles() + 1);
     }
 
     private void incrementNumberOfProcessedFiles(){
-        histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
+        masterThread.getHistogram().setProcessedFiles(masterThread.getHistogram().getProcessedFiles() + 1);
     }
 
     private void addToNumberOfLines(long x){
-        histogram.setLines(histogram.getLines() + x);
+        masterThread.getHistogram().setLines(masterThread.getHistogram().getLines() + x);
     }
 
     private void incrementNumberOfDirectories(){
-        histogram.setDirectories(histogram.getDirectories() + 1);
+        masterThread.getHistogram().setDirectories(masterThread.getHistogram().getDirectories() + 1);
     }
 
+    private void logProcessedFile(String path) throws InterruptedException {
+        Message message = new Message(MessageType.FIlE, path);
+        masterThread.getOut().put(message);
+    }
+
+    private void logProcessedDirectory() throws InterruptedException {
+        Message message = new Message(MessageType.FOLDER, rootFolder, masterThread.getHistogram());
+        masterThread.getOut().put(message);
+    }
 }

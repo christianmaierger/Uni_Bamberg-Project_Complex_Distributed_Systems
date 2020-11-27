@@ -16,14 +16,12 @@ public class LowlevelHistogramService implements HistogramService {
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
 		Histogram histogram = new Histogram();
-		MasterThread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.LOW_LEVEL, 0.5);
+		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.LOW_LEVEL, 0.5);
 
 		try{
 			masterThread.start();
 			masterThread.join();
-		} catch (RuntimeException exception){
-			throw new HistogramServiceException(exception.getMessage());
-		} catch (InterruptedException exception){
+		} catch (RuntimeException | InterruptedException exception){
 			masterThread.interrupt();
 			throw new HistogramServiceException(exception.getMessage());
 		}

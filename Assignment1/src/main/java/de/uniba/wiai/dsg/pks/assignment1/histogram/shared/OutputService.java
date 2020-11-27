@@ -1,15 +1,17 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.util.Arrays;
 import java.util.Formatter;
 
+@NotThreadSafe
 /**
  * Diese Klasse kümmert sich nur um den Output auf der Konsole. Die kann später
  * hoffentlich einfach in einen Thread gepackt werden.
  */
-public class OutputServiceSequential {
+public class OutputService {
     private int lineNumber = 1;
 
     /**
