@@ -96,6 +96,10 @@ public class MasterThread extends Thread{
         return "SequentialHistogramService";
     }
 
+
+
+
+
     /**
      * Scans a directory with the given Code Snippet 2 from the Assignment sheet and
      * starts the processing of either directories by calling this method again or the
@@ -109,36 +113,45 @@ public class MasterThread extends Thread{
      */
     public void processDirectoryLowLevel(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
         Path folder = Paths.get(rootDirectory);
-        LowLevelWorker mainWorker = new LowLevelWorker(this, rootDirectory, fileExtension);
-        /*if(!rootProcessed) {
 
-            mainWorker.start();
-            this.setRootProcessed(true);
+       LowLevelWorker mainWorker = new LowLevelWorker(this, rootFolder, fileExtension);
+       if(!this.rootProcessed) {
+           mainWorker.start();
+           this.setRootProcessed(true);
+       }
 
-        }*/
+
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
-               // System.out.println("Pfad ist:  "+ path);
                 if(Thread.currentThread().isInterrupted()){
                     throw new InterruptedException("Execution has been interrupted.");
                 }
-                if (Files.isDirectory(path) && !path.toString().equals(rootDirectory)){
+                if (Files.isDirectory(path)) {
                     LowLevelWorker worker = new LowLevelWorker(this, path.toString(), fileExtension);
+
+
                     worker.start();
 
-                    // das klappt, immer richtige Zahl 7 Dirs
+
                     incrementNumberOfDirectories();
                     
                     // works like a cahrm but makes programm sequential again
-                   // worker.join();
+                    //worker.join();
+
+
+
+
+
+                        out.logProcessedDirectory(path.toString());
+
 
                     processDirectoryLowLevel(path.toString(), fileExtension);
 
                     // bevor hier der print Service für ein dir hier das hist auslesen kann, braucht das alle Infos
-                    // die Methode in einen sny Block zu tun bringt nicht viel
-                    synchronized (lock) {
-                        out.logProcessedDirectory(path.toString());
-                    }
+                    //
+
+
+
 
                 } else if (Files.isRegularFile(path)){
                     // denke dafür hier nichts machen
@@ -146,7 +159,7 @@ public class MasterThread extends Thread{
             }
             // aus irgendeinem Grund ist dieser Join zentral zusammen damit dass in jedem rekursiven AUfruf oben wieder der
             // mainWorker durchläuft, verstehe nicht, warum die einzelnen worker sosnt nicht gehen
-           // mainWorker.join();
+           mainWorker.join();
         } catch (IOException io) {
             throw new IOException( "I/O error occurred while reading folders and files.");
         }

@@ -14,6 +14,7 @@ public class LowLevelWorker extends Thread {
     MasterThread masterThread;
     String directory;
     String extension;
+    private final Object lock = new Object();
 
 
     public LowLevelWorker(MasterThread masterThread, String directory, String extension) {
@@ -36,10 +37,14 @@ public class LowLevelWorker extends Thread {
                     if (path.getFileName().toString().endsWith(fileExtension)){
                         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
                         processFile(lines);
+
+
+
                         masterThread.getOut().logProcessedFile(path.toString());
                     }
                 }
             }
+
         } catch (IOException io){
             throw new IOException( "I/O error occurred while reading folders and files.");
         }
