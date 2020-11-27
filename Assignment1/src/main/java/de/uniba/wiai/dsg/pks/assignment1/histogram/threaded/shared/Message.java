@@ -1,4 +1,4 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.shared;
+package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import net.jcip.annotations.Immutable;
@@ -37,7 +37,13 @@ public class Message {
     }
 
     public MessageType getType() {
-        return type;
+        if(type.equals(MessageType.FILE)){
+            return MessageType.FILE;
+        } else if(type.equals(MessageType.FOLDER)){
+            return MessageType.FOLDER;
+        } else{
+            return MessageType.FINISH;
+        }
     }
 
     public Histogram getHistogram(){

@@ -1,9 +1,6 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
+package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.Message;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,12 +11,11 @@ import java.nio.file.Paths;
 import java.util.List;
 
 
-public class LowLevelWorker extends Thread {
+public class Worker extends Thread {
     private final String rootFolder;
     private final MasterThread masterThread;
-    private final Object lock = new Object();
 
-    public LowLevelWorker(String rootFolder, MasterThread masterThread){
+    public Worker(String rootFolder, MasterThread masterThread){
         this.rootFolder = rootFolder;
         this.masterThread = masterThread;
     }
@@ -29,25 +25,26 @@ public class LowLevelWorker extends Thread {
         try{
             processFilesInDirectory();
             logFinishedProcessing();
-        } catch(InterruptedException | IOException exception){
+        } catch (InterruptedException | IOException exception){
             throw new RuntimeException(exception.getMessage());
+        } finally{
+            masterThread.getThreadSemaphore().release();
         }
-        masterThread.getThreadSemaphore().release();
-    }
 
-    public String toString(){
-        return "LowLevelWorker";
     }
 
     private void logFinishedProcessing() throws InterruptedException {
-
+        masterThread.getBooleanSemaphore().acquire();
+        try {
             incrementNumberOfDirectories();
             logProcessedDirectory();
-
+        } finally {
+            masterThread.getBooleanSemaphore().release();
+        }
     }
 
-    private void processFilesInDirectory() throws InterruptedException, IOException {
-        Path folder = Paths.get(masterThread.getRootFolder());
+    private void processFilesInDirectory() throws IOException, InterruptedException {
+        Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if (Files.isRegularFile(path)){
@@ -68,7 +65,8 @@ public class LowLevelWorker extends Thread {
     }
 
     private void updateResultsInHistogram(Histogram updateHistogram, boolean correctFileExtension, Path path) throws InterruptedException {
-        synchronized (lock){
+        masterThread.getBooleanSemaphore().acquire();
+        try{
             incrementNumberOfFiles();
             if(correctFileExtension){
                 incrementNumberOfProcessedFiles();
@@ -78,6 +76,8 @@ public class LowLevelWorker extends Thread {
                 }
                 logProcessedFile(path.toString());
             }
+        } finally {
+            masterThread.getBooleanSemaphore().release();
         }
     }
 
@@ -114,6 +114,7 @@ public class LowLevelWorker extends Thread {
         }
     }
 
+
     private void incrementNumberOfFiles(){
         masterThread.getHistogram().setFiles(masterThread.getHistogram().getFiles() + 1);
     }
@@ -131,13 +132,12 @@ public class LowLevelWorker extends Thread {
     }
 
     private void logProcessedFile(String path) throws InterruptedException {
-        Message message = new Message(MessageType.FIlE, path);
-        masterThread.getOut().put(message);
+        Message message = new Message(MessageType.FILE, path);
+        masterThread.getOutputThread().put(message);
     }
 
     private void logProcessedDirectory() throws InterruptedException {
         Message message = new Message(MessageType.FOLDER, rootFolder, masterThread.getHistogram());
-        masterThread.getOut().put(message);
+        masterThread.getOutputThread().put(message);
     }
-
 }

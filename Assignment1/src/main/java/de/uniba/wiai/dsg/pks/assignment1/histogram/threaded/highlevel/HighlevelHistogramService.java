@@ -4,7 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MasterThread;
 
 public class HighlevelHistogramService implements HistogramService {
 

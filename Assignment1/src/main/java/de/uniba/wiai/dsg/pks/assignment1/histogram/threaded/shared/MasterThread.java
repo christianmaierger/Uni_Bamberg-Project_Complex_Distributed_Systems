@@ -1,11 +1,7 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded;
+package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.Message;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputServiceThreadWrapper;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel.HighLevelWorker;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
 
 import java.io.IOException;
@@ -24,19 +20,17 @@ public class MasterThread extends Thread{
     private final Histogram histogram;
     private final String rootFolder;
     private final String fileExtension;
-    private final Service syncType;
     private final Semaphore threadSemaphore;
     private final Semaphore booleanSemaphore;
-    private final OutputServiceThreadWrapper out;
+    private final OutputServiceThread outputThread;
     private final List<Thread> threads;
 
     public MasterThread(String rootFolder, String fileExtension, Histogram histogram, Service type, double blockingCoefficient){
        super("MasterThread");
        this.fileExtension = fileExtension;
        this.histogram = histogram;
-       this.syncType = type;
        this.rootFolder = rootFolder;
-       this.out = new OutputServiceThreadWrapper(type);
+       this.outputThread = new OutputServiceThread(type);
        this.threads = new ArrayList<>();
 
        int kernels = Runtime.getRuntime().availableProcessors();
@@ -71,22 +65,21 @@ public class MasterThread extends Thread{
         return booleanSemaphore;
     }
 
-    public OutputServiceThreadWrapper getOut() {
-        return out;
+    public OutputServiceThread getOutputThread() {
+        return outputThread;
     }
 
     @Override
     public void run(){
         try {
-            out.start();
+            outputThread.start();
             traverseDirectory(rootFolder);
 
-            //Iterator
             for (Thread worker : threads) {
                 worker.join();
             }
-            out.put(new Message(MessageType.FINISH));
-            out.join();
+            outputThread.put(new Message(MessageType.FINISH));
+            outputThread.join();
 
         } catch (IOException | InterruptedException exception) {
             throw new RuntimeException(exception.getMessage());
@@ -116,20 +109,16 @@ public class MasterThread extends Thread{
 
     private void processFilesInFolder(String rootFolder) throws InterruptedException {
         threadSemaphore.acquire();
-        Thread worker = new HighLevelWorker(rootFolder, this);
+        Thread worker = new Worker(rootFolder, this);
         threads.add(worker);
         worker.start();
     }
 
     private void shutDown() throws InterruptedException {
-        out.put(new Message(MessageType.FINISH));
+        outputThread.put(new Message(MessageType.FINISH));
         for (Thread worker: threads) {
             worker.interrupt();
         }
-    }
-
-    public void removeThreadFromList(Thread thread){
-        threads.remove(thread);
     }
 
     @Override

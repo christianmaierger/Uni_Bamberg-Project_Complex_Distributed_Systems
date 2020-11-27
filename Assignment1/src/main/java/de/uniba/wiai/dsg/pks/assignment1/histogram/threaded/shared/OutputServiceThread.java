@@ -1,19 +1,20 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.shared;
+package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelBlockingQueue;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class OutputServiceThreadWrapper extends Thread{
+public class OutputServiceThread extends Thread{
     private final static int MESSAGE_CAPACITY = 100;
-    private final OutputService out;
+    private final OutputService outputService;
     private final BlockingQueue<Message> queue;
 
-    public OutputServiceThreadWrapper(Service type){
+    public OutputServiceThread(Service type){
         super("OutputService");
-        this.out = new OutputService();
+        this.outputService = new OutputService();
         if(Service.HIGH_LEVEL.equals(type)){
             this.queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY);
         } else {
@@ -35,10 +36,10 @@ public class OutputServiceThreadWrapper extends Thread{
                     finished = true;
                     continue;
                 }
-                if(MessageType.FIlE.equals(message.getType())){
-                    out.logProcessedFile(message.getPath());
+                if(MessageType.FILE.equals(message.getType())){
+                    outputService.logProcessedFile(message.getPath());
                 } else{
-                    out.logProcessedDirectory(message.getPath(), message.getHistogram());
+                    outputService.logProcessedDirectory(message.getPath(), message.getHistogram());
                 }
             } catch (InterruptedException exception) {
                 finished = true;

@@ -1,4 +1,4 @@
-package de.uniba.wiai.dsg.pks.assignment1.histogram.shared;
+package de.uniba.wiai.dsg.pks.assignment1.histogram;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import net.jcip.annotations.NotThreadSafe;
