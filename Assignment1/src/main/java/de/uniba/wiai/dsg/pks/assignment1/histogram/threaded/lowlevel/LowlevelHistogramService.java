@@ -4,6 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputThread;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
@@ -39,6 +40,12 @@ public class LowlevelHistogramService implements HistogramService {
 		} catch (Exception exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}
+		try {
+			masterThread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		masterThread.getOut().logProcessedDirectory(rootDirectory);
 		return masterThread.getHistogram();
 	}
 

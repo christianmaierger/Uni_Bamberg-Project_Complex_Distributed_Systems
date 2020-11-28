@@ -1,5 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputThread;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.MasterThread;
 
 import java.io.IOException;
@@ -14,17 +15,24 @@ public class LowLevelWorker extends Thread {
     MasterThread masterThread;
     String directory;
     String extension;
-    private final Object lock = new Object();
+    private final Object lock;
+    OutputThread outputThread;
 
 
-    public LowLevelWorker(MasterThread masterThread, String directory, String extension) {
+    public LowLevelWorker(MasterThread masterThread, String directory, String extension, Object lock, OutputThread outputThread) {
         this.masterThread= masterThread;
         this.directory = directory;
        this.extension = extension;
+       this.lock=lock;
+       this.outputThread=outputThread;
     }
 
     public void  processDirectoryWithWorker(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
         Path folder = Paths.get(rootDirectory);
+
+        // worker is different, but outPutThread is the same, so the boolean in out has to be set back, so
+        // it can print again
+
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if(Thread.currentThread().isInterrupted()){
@@ -39,11 +47,24 @@ public class LowLevelWorker extends Thread {
                         processFile(lines);
 
 
+                        synchronized (lock) {
+                            // masterThread.getOut().logProcessedFile(path.toString());
 
-                        masterThread.getOut().logProcessedFile(path.toString());
+                        }
                     }
                 }
             }
+            synchronized (lock) {
+                outputThread.setLastUpdatePrinted(false);
+                masterThread.incrementNumberOfDirectories();
+                outputThread.updateHistogram(masterThread.getHistogram());
+                outputThread.setCurrentDirectory(rootDirectory);
+                Object histCounter = new Object();
+                outputThread.updateHistogramCounterList(histCounter);
+                lock.notifyAll();
+            }
+            outputThread.setLastUpdatePrinted(true);
+
 
         } catch (IOException io){
             throw new IOException( "I/O error occurred while reading folders and files.");
@@ -88,7 +109,9 @@ public class LowLevelWorker extends Thread {
     @Override
     public void run() {
                     try {
+
                 processDirectoryWithWorker(directory, extension);
+
             } catch (Exception e) {
                 //todo
             }

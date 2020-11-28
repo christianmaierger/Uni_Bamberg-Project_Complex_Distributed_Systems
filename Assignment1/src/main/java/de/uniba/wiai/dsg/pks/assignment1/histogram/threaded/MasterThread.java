@@ -4,6 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputService;
+import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.OutputThread;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.shared.SyncType;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.highlevel.HighlevelHistogramService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelWorker;
@@ -15,6 +16,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -27,14 +29,19 @@ public class MasterThread extends Thread{
     private int maxNumberOfThreads;
     private SyncType type;
     private boolean rootProcessed = false;
+    List<Thread> dirWorker = new LinkedList<>();
     String rootFolder;
     String fileExtension;
    LowlevelHistogramService histogramLowLevelService;
    HighlevelHistogramService histogramHighLevelService;
    private final OutputService out;
    private final Object lock = new Object();
+   OutputThread outputThread;
 
     // Es muss sichergestellt sein, dass es nie mehr current als max Threads gibt.
+
+
+
 
 
     public MasterThread(double blockingCoefficient, SyncType type, String rootFolder, String fileExtension){
@@ -54,9 +61,42 @@ public class MasterThread extends Thread{
         out = new OutputService(histogram);
     }
 
-    public synchronized OutputService getOut() {
-        return out;
+
+    public OutputService getOut(){
+        return this.out;
     }
+
+    public void incrementNumberOfFiles() {
+        synchronized (lock) {
+            histogram.setFiles(histogram.getFiles() + 1);
+        }
+    }
+
+    public void incrementNumberOfProcessedFiles() {
+        synchronized (lock) {
+            histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
+        }
+    }
+
+    public void addToNumberOfLines(int x) {
+        synchronized (lock) {
+            histogram.setLines(histogram.getLines() + x);
+        }
+    }
+
+    public void incrementDistributionAtX(int x){
+        synchronized (lock) {
+            histogram.getDistribution()[x]++;
+        }
+    }
+
+    public void incrementNumberOfDirectories() {
+        synchronized (lock) {
+            histogram.setDirectories(histogram.getDirectories() + 1);
+        }
+    }
+
+
 
     public synchronized Histogram getHistogram() {
         return histogram;
@@ -114,52 +154,41 @@ public class MasterThread extends Thread{
     public void processDirectoryLowLevel(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
         Path folder = Paths.get(rootDirectory);
 
-       LowLevelWorker mainWorker = new LowLevelWorker(this, rootFolder, fileExtension);
+
+       LowLevelWorker mainWorker = new LowLevelWorker(this, rootDirectory, fileExtension, lock, outputThread);
        if(!this.rootProcessed) {
            mainWorker.start();
            this.setRootProcessed(true);
        }
 
 
+
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
-            for(Path path: stream){
-                if(Thread.currentThread().isInterrupted()){
+            for(Path path: stream) {
+                if (Thread.currentThread().isInterrupted()) {
                     throw new InterruptedException("Execution has been interrupted.");
                 }
                 if (Files.isDirectory(path)) {
-                    LowLevelWorker worker = new LowLevelWorker(this, path.toString(), fileExtension);
+                     LowLevelWorker worker = new LowLevelWorker(this, path.toString(), fileExtension, lock, outputThread);
 
 
+                    dirWorker.add(worker);
                     worker.start();
-
-
-                    incrementNumberOfDirectories();
-                    
-                    // works like a cahrm but makes programm sequential again
-                    //worker.join();
-
-
-
-
-
-                        out.logProcessedDirectory(path.toString());
 
 
                     processDirectoryLowLevel(path.toString(), fileExtension);
 
-                    // bevor hier der print Service für ein dir hier das hist auslesen kann, braucht das alle Infos
-                    //
 
 
 
 
-                } else if (Files.isRegularFile(path)){
-                    // denke dafür hier nichts machen
                 }
             }
             // aus irgendeinem Grund ist dieser Join zentral zusammen damit dass in jedem rekursiven AUfruf oben wieder der
             // mainWorker durchläuft, verstehe nicht, warum die einzelnen worker sosnt nicht gehen
            mainWorker.join();
+
+
         } catch (IOException io) {
             throw new IOException( "I/O error occurred while reading folders and files.");
         }
@@ -175,49 +204,31 @@ public class MasterThread extends Thread{
 
 
 
-    public void incrementNumberOfFiles() {
-        synchronized (lock) {
-            histogram.setFiles(histogram.getFiles() + 1);
-        }
-    }
-
-    public void incrementNumberOfProcessedFiles() {
-        synchronized (lock) {
-            histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
-        }
-    }
-
-    public void addToNumberOfLines(int x) {
-        synchronized (lock) {
-            histogram.setLines(histogram.getLines() + x);
-        }
-    }
-
-    public void incrementNumberOfDirectories() {
-        synchronized (lock) {
-            histogram.setDirectories(histogram.getDirectories() + 1);
-        }
-    }
-
-    public void incrementDistributionAtX(int x){
-        synchronized (lock) {
-            histogram.getDistribution()[x]++;
-        }
-    }
-
 
 
 
     @Override
     public void run() {
         try {
+            outputThread = new OutputThread(lock, this, this.getHistogram());
+            outputThread.start();
             startProcessing(rootFolder, fileExtension);
+
+            for (Thread worker : dirWorker) {
+                try {
+                    worker.join();
+                } catch (InterruptedException e) {
+                    // to do
+                }
+            }
+
         } catch (HistogramServiceException e) {
             // TO DO
         }
 
     }
 
+    }
 
 
-}
+

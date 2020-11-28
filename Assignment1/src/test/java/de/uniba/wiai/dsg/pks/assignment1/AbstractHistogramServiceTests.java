@@ -114,17 +114,4 @@ public abstract class AbstractHistogramServiceTests {
 		return result.toString();
 	}
 
-	//FIXME: Der hier war nur als Test, muss vor der Abgabe gelöscht werden
-	@Test
-	public void testSimple111() throws HistogramServiceException, URISyntaxException {
-		assertEquals(
-				getHistogramString(new Histogram(
-						new long[] { 5, 0, 0, 3, 10, 2, 0, 2, 6, 0, 0, 5, 5, 1, 0, 4, 0, 2, 9, 4, 0, 1, 0, 1, 3, 0 }, 7,
-						5, 4, 1 + COUNT_ROOT_FOLDER)),
-				getHistogramString(histogramService.calculateHistogram(
-						Paths.get("/Users/franzi/Documents/Master/03_WiSe_20.21/PKS").toString(),
-						".java")));
-	}
-
-
 }
