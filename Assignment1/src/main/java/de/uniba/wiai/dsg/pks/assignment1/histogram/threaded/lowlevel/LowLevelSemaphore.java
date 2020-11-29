@@ -10,20 +10,15 @@ public class LowLevelSemaphore extends Semaphore {
     private final Object lock = new Object();
 
     public LowLevelSemaphore(int capacity){
-        super(capacity);
+        super(0);
         this.capacity = capacity;
     }
 
     @Override
-    public void acquire() {
+    public void acquire() throws InterruptedException {
         synchronized (lock){
             while(capacity == 0){
-                try{
-                    lock.wait();
-                }
-                catch (InterruptedException ie){
-                    continue;
-                }
+                lock.wait();
             }
             capacity--;
         }
@@ -36,5 +31,4 @@ public class LowLevelSemaphore extends Semaphore {
             lock.notifyAll();
         }
     }
-
 }

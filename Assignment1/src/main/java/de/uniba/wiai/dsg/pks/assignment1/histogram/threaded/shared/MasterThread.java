@@ -34,23 +34,19 @@ public class MasterThread extends Thread{
        this.threads = new ArrayList<>();
 
        int kernels = Runtime.getRuntime().availableProcessors();
-       int maxNumberOfThreads = (int) Math.ceil(kernels / (1 - blockingCoefficient));
+       int maxNumberOfConcurrentThreads = (int) Math.ceil(kernels / (1 - blockingCoefficient));
 
        if(Service.LOW_LEVEL.equals(type)){
-           this.threadSemaphore = new LowLevelSemaphore(maxNumberOfThreads);
+           this.threadSemaphore = new LowLevelSemaphore(maxNumberOfConcurrentThreads);
            this.booleanSemaphore = new LowLevelSemaphore(1);
        } else {
-           this.threadSemaphore = new Semaphore(maxNumberOfThreads);
+           this.threadSemaphore = new Semaphore(maxNumberOfConcurrentThreads);
            this.booleanSemaphore = new Semaphore(1);
        }
     }
 
     public Histogram getHistogram() {
         return histogram;
-    }
-
-    public String getRootFolder() {
-        return rootFolder;
     }
 
     public String getFileExtension() {

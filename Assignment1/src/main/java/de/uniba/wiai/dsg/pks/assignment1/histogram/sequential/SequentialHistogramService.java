@@ -13,11 +13,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 
 @NotThreadSafe
 public class SequentialHistogramService implements HistogramService {
 	private Histogram histogram;
-	private OutputService out;
+	private OutputService outputService;
 
 	public SequentialHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -47,14 +48,28 @@ public class SequentialHistogramService implements HistogramService {
 	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		if(!Objects.nonNull(rootDirectory) || !Objects.nonNull(fileExtension)){
+			throw new HistogramServiceException("Neither root directory nor file extension must be null.");
+		}
+		if(rootDirectory.isBlank() || fileExtension.isBlank()){
+			throw new HistogramServiceException("Neither root directory nor file extension must be empty.");
+		}
+		Path rootPath = Paths.get(rootDirectory);
+		if(!Files.exists(rootPath)){
+			throw new HistogramServiceException("Root directory does not exist.");
+		}
+		if(!Files.isDirectory(rootPath)){
+			throw new HistogramServiceException("Root directory must be a directory");
+		}
+
 		histogram = new Histogram();
-		out = new OutputService();
+		outputService = new OutputService();
 
 		try{
 			processDirectory(rootDirectory, fileExtension);
 			// increment number of directories because now root directory has been processed as well
 			incrementNumberOfDirectories();
-			out.logProcessedDirectory(rootDirectory, histogram);
+			outputService.logProcessedDirectory(rootDirectory, histogram);
 		} catch (InterruptedException | IOException exception) {
 			throw new HistogramServiceException(exception.getMessage());
 		}
@@ -88,13 +103,13 @@ public class SequentialHistogramService implements HistogramService {
 				if (Files.isDirectory(path)){
 					processDirectory(path.toString(), fileExtension);
 					incrementNumberOfDirectories();
-					out.logProcessedDirectory(path.toString(), histogram);
+					outputService.logProcessedDirectory(path.toString(), histogram);
 				} else if (Files.isRegularFile(path)){
 					incrementNumberOfFiles();
 					if (path.getFileName().toString().endsWith(fileExtension)){
 						List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
 						processFile(lines);
-						out.logProcessedFile(path.toString());
+						outputService.logProcessedFile(path.toString());
 					}
 				}
 			}

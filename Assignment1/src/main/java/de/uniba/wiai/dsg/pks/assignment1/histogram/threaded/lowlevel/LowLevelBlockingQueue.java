@@ -1,12 +1,10 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+//TODO: methoden implementierung?
 public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
     private final int capacity;
     private final List<E> entries;
@@ -19,6 +17,9 @@ public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
 
     @Override
     public void put(E entry) throws InterruptedException {
+        if(!Objects.nonNull(entry)){
+            throw new NullPointerException("Entry is null and cannot be added to LowLevelBlockingQueue.");
+        }
         synchronized (lock){
             while(entries.size() >= capacity){
                 lock.wait();

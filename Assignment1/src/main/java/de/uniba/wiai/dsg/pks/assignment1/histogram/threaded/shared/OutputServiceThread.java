@@ -50,5 +50,4 @@ public class OutputServiceThread extends Thread{
     public void put(Message message) throws InterruptedException {
         queue.put(message);
     }
-
 }

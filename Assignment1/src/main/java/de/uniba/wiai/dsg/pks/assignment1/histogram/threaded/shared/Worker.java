@@ -25,12 +25,13 @@ public class Worker extends Thread {
         try{
             processFilesInDirectory();
             logFinishedProcessing();
-        } catch (InterruptedException | IOException exception){
-            throw new RuntimeException(exception.getMessage());
+        } catch (InterruptedException exception) {
+            throw new RuntimeException("Execution has been interrupted.");
+        } catch (IOException exception){
+            throw new RuntimeException("Error occurred during I/O process.");
         } finally{
             masterThread.getThreadSemaphore().release();
         }
-
     }
 
     private void logFinishedProcessing() throws InterruptedException {
