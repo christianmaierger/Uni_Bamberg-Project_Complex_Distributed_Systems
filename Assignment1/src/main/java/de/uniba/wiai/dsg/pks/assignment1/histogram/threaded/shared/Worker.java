@@ -14,17 +14,19 @@ import java.util.List;
 public class Worker extends Thread {
     private final String rootFolder;
     private final MasterThread masterThread;
+    private final Histogram localHistogram;
 
     public Worker(String rootFolder, MasterThread masterThread){
         this.rootFolder = rootFolder;
         this.masterThread = masterThread;
+        this.localHistogram = new Histogram();
     }
 
     @Override
     public void run() {
         try{
-            processFilesInDirectory();
-            logFinishedProcessing();
+            processFiles();
+            updateSharedHistogram();
         } catch (InterruptedException exception) {
             throw new RuntimeException("Execution has been interrupted.");
         } catch (IOException exception){
@@ -34,9 +36,34 @@ public class Worker extends Thread {
         }
     }
 
-    private void logFinishedProcessing() throws InterruptedException {
+    private void processFiles() throws IOException, InterruptedException {
+        Path folder = Paths.get(rootFolder);
+        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
+            for(Path path: stream){
+                if (Files.isRegularFile(path)){
+                    localHistogram.setFiles(localHistogram.getFiles() + 1);
+                    boolean fileExtensionCorrect = path.getFileName().toString().endsWith(masterThread.getFileExtension());
+                    if (fileExtensionCorrect){
+                        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+                        processFileContent(lines);
+                        logProcessedFile(path.toString());
+                        localHistogram.setProcessedFiles(localHistogram.getProcessedFiles() + 1);
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void updateSharedHistogram() throws InterruptedException {
         masterThread.getBooleanSemaphore().acquire();
-        try {
+        try{
+            addToNumberOfFiles(localHistogram.getFiles());
+            addToNumberOfProcessFiles(localHistogram.getProcessedFiles());
+            addToNumberOfLines(localHistogram.getLines());
+            for(int x = 0; x < 26; x++){
+                masterThread.getHistogram().getDistribution()[x] += localHistogram.getDistribution()[x];
+            }
             incrementNumberOfDirectories();
             logProcessedDirectory();
         } finally {
@@ -44,84 +71,39 @@ public class Worker extends Thread {
         }
     }
 
-    private void processFilesInDirectory() throws IOException, InterruptedException {
-        Path folder = Paths.get(rootFolder);
-        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
-            for(Path path: stream){
-                if (Files.isRegularFile(path)){
-
-                    //count
-                    Histogram countHistogram = new Histogram();
-                    boolean fileExtensionCorrect = path.getFileName().toString().endsWith(masterThread.getFileExtension());
-                    if (fileExtensionCorrect){
-                        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-                        countHistogram = processFileContent(lines);
-                    }
-
-                    //update
-                    updateResultsInHistogram(countHistogram, fileExtensionCorrect, path);
-                }
-            }
-        }
-    }
-
-    private void updateResultsInHistogram(Histogram updateHistogram, boolean correctFileExtension, Path path) throws InterruptedException {
-        masterThread.getBooleanSemaphore().acquire();
-        try{
-            incrementNumberOfFiles();
-            if(correctFileExtension){
-                incrementNumberOfProcessedFiles();
-                addToNumberOfLines(updateHistogram.getLines());
-                for(int x = 0; x < 26; x++){
-                    masterThread.getHistogram().getDistribution()[x] += updateHistogram.getDistribution()[x];
-                }
-                logProcessedFile(path.toString());
-            }
-        } finally {
-            masterThread.getBooleanSemaphore().release();
-        }
-    }
-
-    private Histogram processFileContent(List<String> lines){
-        //create new Histogram to store results
-        Histogram resultHistogram = new Histogram();
-
+    private void processFileContent(List<String> lines){
         // count lines
         long linesInFile = lines.size();
-        resultHistogram.setLines(linesInFile);
+        localHistogram.setLines(localHistogram.getLines() + linesInFile);
 
         // count letter distribution
-        long[] distribution = new long[26];
         for (String line: lines) {
-            countLettersInLine(line, distribution);
+            countLettersInLine(line);
         }
-        resultHistogram.setDistribution(distribution);
-
-        return resultHistogram;
     }
 
-    private void countLettersInLine(String line, long[] distribution){
+    private void countLettersInLine(String line){
         for(int x = 0; x < line.length(); x++){
 
             char character = line.charAt(x);
             int asciiValue = (int) character;
 
             if(asciiValue >= 'A' && asciiValue <= 'Z'){
-                distribution[asciiValue - 'A']++;
+                localHistogram.getDistribution()[asciiValue - 'A']++;
             }
             if(asciiValue >= 'a' && asciiValue <= 'z'){
-                distribution[asciiValue - 'a']++;
+                localHistogram.getDistribution()[asciiValue - 'a']++;
             }
         }
     }
 
 
-    private void incrementNumberOfFiles(){
-        masterThread.getHistogram().setFiles(masterThread.getHistogram().getFiles() + 1);
+    private void addToNumberOfFiles(long x){
+        masterThread.getHistogram().setFiles(masterThread.getHistogram().getFiles() + x);
     }
 
-    private void incrementNumberOfProcessedFiles(){
-        masterThread.getHistogram().setProcessedFiles(masterThread.getHistogram().getProcessedFiles() + 1);
+    private void addToNumberOfProcessFiles(long x){
+        masterThread.getHistogram().setProcessedFiles(masterThread.getHistogram().getProcessedFiles() + x);
     }
 
     private void addToNumberOfLines(long x){
