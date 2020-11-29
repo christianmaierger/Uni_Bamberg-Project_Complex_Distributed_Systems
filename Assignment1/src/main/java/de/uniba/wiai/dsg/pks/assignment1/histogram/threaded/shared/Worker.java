@@ -27,10 +27,10 @@ public class Worker extends Thread {
         try{
             processFiles();
             updateSharedHistogram();
-        } catch (InterruptedException exception) {
-            throw new RuntimeException("Execution has been interrupted.");
-        } catch (IOException exception){
-            throw new RuntimeException("Error occurred during I/O process.");
+        } catch (InterruptedException | IOException ignored) {
+            //FIXME: Hier bringt es ja gar nichts, die exception irgendwie weiterzugeben, weil es keine thread gibt,
+            //der sie catchen könnte, oder? Ist ok für InterruptedException, aber nicht für IO, weil dann kann man ja
+            //gar nicht zurückmelden, dass es einen IO-Fehler gab. Dafür evtl über ein Feld mit dem Service kommunizieren?
         } finally{
             masterThread.getThreadSemaphore().release();
         }

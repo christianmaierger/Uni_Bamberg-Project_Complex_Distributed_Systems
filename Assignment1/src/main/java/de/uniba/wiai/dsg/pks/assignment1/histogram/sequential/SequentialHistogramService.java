@@ -25,18 +25,6 @@ public class SequentialHistogramService implements HistogramService {
 		// but you can add code below
 	}
 
-
-	// Was bei mehreren Thread kritisch wird:
-	// - Jeder Thread muss ein anderes Verzeichnis machen, es dürfen nicht zwei Threads dasselbe Verzeichnis anschauen.
-	// - Die Ausgabe der Zeilennummern am Anfang muss richtig aufsteigend sein --> Producer/Consumer Pattern nutzen
-	//       von allen Threads an den Ausgabethread
-	// - Es darf immer nur ein Thread gleichzeitig auf das Histogram zugreifen bzw. eben nur in atomarer
-	//        Art und Weise, sonst stimmt die Zählung am Ende nicht.
-
-	// Idee: Histogramm sollte im Master-Thread erstellt werden und dann an alle Threads gegeben werden. Bei der
-	// sequentiellen Abarbeitung kann jedoch direkt oben als Variable ein neues erstellt werden, da es hier nur eins gibt.
-
-
 	/**
 	 *
 	 * @param rootDirectory
@@ -67,7 +55,6 @@ public class SequentialHistogramService implements HistogramService {
 
 		try{
 			processDirectory(rootDirectory, fileExtension);
-			// increment number of directories because now root directory has been processed as well
 			incrementNumberOfDirectories();
 			outputService.logProcessedDirectory(rootDirectory, histogram);
 		} catch (InterruptedException | IOException exception) {
@@ -129,14 +116,9 @@ public class SequentialHistogramService implements HistogramService {
 	 * @param lines the lines while together form a file
 	 */
 	private void processFile(List<String> lines){
-		// lines
 		int linesInFile = lines.size();
 		addToNumberOfLines(linesInFile);
-
-		// processed file
 		incrementNumberOfProcessedFiles();
-
-		// letter distribution
 		for (String line: lines) {
 			countLettersInLine(line);
 		}

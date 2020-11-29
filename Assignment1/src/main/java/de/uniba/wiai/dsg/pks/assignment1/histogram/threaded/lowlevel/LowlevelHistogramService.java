@@ -40,9 +40,9 @@ public class LowlevelHistogramService implements HistogramService {
 		try{
 			masterThread.start();
 			masterThread.join();
-		} catch (RuntimeException | InterruptedException exception){
+		} catch (InterruptedException exception){
 			masterThread.interrupt();
-			throw new HistogramServiceException(exception.getMessage());
+			throw new HistogramServiceException("Execution has been interrupted.");
 		}
 		return histogram;
 	}

@@ -77,8 +77,8 @@ public class MasterThread extends Thread{
             outputThread.put(new Message(MessageType.FINISH));
             outputThread.join();
 
-        } catch (IOException | InterruptedException exception) {
-            throw new RuntimeException(exception.getMessage());
+        } catch (IOException | InterruptedException ignored1) {
+            shutDown();
         }
     }
 
@@ -88,12 +88,12 @@ public class MasterThread extends Thread{
      * @param rootFolder
      */
     public void traverseDirectory(String rootFolder) throws IOException, InterruptedException {
-        //look for directories in folder
         Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if(Thread.currentThread().isInterrupted()){
                     shutDown();
+                    return;
                 }
                 if (Files.isDirectory(path)){
                     traverseDirectory(path.toString());
@@ -110,8 +110,8 @@ public class MasterThread extends Thread{
         worker.start();
     }
 
-    private void shutDown() throws InterruptedException {
-        outputThread.put(new Message(MessageType.FINISH));
+    private void shutDown() {
+        outputThread.interrupt();
         for (Thread worker: threads) {
             worker.interrupt();
         }
@@ -121,5 +121,4 @@ public class MasterThread extends Thread{
     public String toString() {
         return "MasterThread";
     }
-
 }

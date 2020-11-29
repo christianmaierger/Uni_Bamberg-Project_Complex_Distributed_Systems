@@ -24,19 +24,13 @@ public class OutputServiceThread extends Thread{
 
     @Override
     public void run(){
-        printIncomingMessages();
-    }
-
-    private void printIncomingMessages() {
         boolean finished = false;
         while(!finished){
             try {
                 Message message = queue.take();
                 if (MessageType.FINISH.equals(message.getType())) {
                     finished = true;
-                    continue;
-                }
-                if(MessageType.FILE.equals(message.getType())){
+                } else if(MessageType.FILE.equals(message.getType())){
                     outputService.logProcessedFile(message.getPath());
                 } else{
                     outputService.logProcessedDirectory(message.getPath(), message.getHistogram());
