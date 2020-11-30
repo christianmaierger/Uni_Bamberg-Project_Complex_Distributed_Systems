@@ -25,15 +25,6 @@ public class SequentialHistogramService implements HistogramService {
 		// but you can add code below
 	}
 
-	/**
-	 *
-	 * @param rootDirectory
-	 *            the directory to start from
-	 * @param fileExtension
-	 *            the filter which files are used to compute the histogram
-	 * @return
-	 * @throws HistogramServiceException
-	 */
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
 		if(!Objects.nonNull(rootDirectory) || !Objects.nonNull(fileExtension)){
@@ -70,15 +61,15 @@ public class SequentialHistogramService implements HistogramService {
 	}
 
 	/**
-	 * Scans a directory with the given Code Snippet 2 from the Assignment sheet and
-	 * starts the processing of either directories by calling this method again or the
-	 * processing of a file by calling method fileprocessing.
-	 * Increments the number of processed directories by one and also calls the log-method for finished
-	 * directories. Also increments the number of files in the histogram (just files, not processed files).
-	 * The number of processed files is considered in the processFile method.
+	 * Scans a directory with all its subdirectories and processes the content with respect to statistical measures and
+	 * letter distribution. Also, logging messages are printed to console.
 	 *
-	 * @param rootDirectory
-	 * @param fileExtension
+	 * It updates the histogram with respect to:
+	 *  - number of processed directories
+	 * 	- number of files in general (not processed)
+	 *
+	 * @param rootDirectory directory to scan
+	 * @param fileExtension file extension of file that shall be processed
 	 */
 	private void processDirectory(String rootDirectory, String fileExtension) throws InterruptedException, IOException {
 		Path folder = Paths.get(rootDirectory);
@@ -113,7 +104,7 @@ public class SequentialHistogramService implements HistogramService {
 	 * - number of processed files
 	 * - distribution of letters found in the processed file
 	 *
-	 * @param lines the lines while together form a file
+	 * @param lines the lines which together form a file
 	 */
 	private void processFile(List<String> lines){
 		int linesInFile = lines.size();

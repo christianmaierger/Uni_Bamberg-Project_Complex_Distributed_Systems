@@ -5,12 +5,14 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MasterThread;
+import net.jcip.annotations.ThreadSafe;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 
+@ThreadSafe
 public class HighlevelHistogramService implements HistogramService {
 
 	public HighlevelHistogramService() {
@@ -35,7 +37,7 @@ public class HighlevelHistogramService implements HistogramService {
 		}
 
 		Histogram histogram = new Histogram();
-		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.HIGH_LEVEL, 0.5);
+		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.HIGH_LEVEL, 0.3);
 
 		try{
 			masterThread.start();

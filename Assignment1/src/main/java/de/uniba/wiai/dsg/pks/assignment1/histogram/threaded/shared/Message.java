@@ -4,6 +4,10 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import net.jcip.annotations.Immutable;
 
 @Immutable
+/**
+ * Contains a message for the OutputServiceThread to print. Messages can be of type Message.FOLDER,
+ * Message.FILE or Message.FINISH and can contain a path to print and/or a Histogram.
+ */
 public class Message {
     private final MessageType type;
     private final String path;

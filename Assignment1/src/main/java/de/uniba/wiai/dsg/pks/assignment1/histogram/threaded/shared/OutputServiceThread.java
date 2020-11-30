@@ -3,12 +3,22 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelBlockingQueue;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+@NotThreadSafe
+/**
+ * A Thread responsible for printing received Messages to console. It offers a public put method to enqueue Messages.
+ * It will print all Messages in the order in which they are placed until it either receives a poison pill,
+ * a Message of type MessageType.FINISH or is interrupted.
+ *
+ * It can be instantiated as using only high level or only low level methods via the "Service type" parameter
+ * of the constructor. It is not threadsafe and only one instance should be used at a time.
+ */
 public class OutputServiceThread extends Thread{
-    private final static int MESSAGE_CAPACITY = 100;
+    private final static int MESSAGE_CAPACITY = 500;
     private final OutputService outputService;
     private final BlockingQueue<Message> queue;
 
@@ -41,6 +51,13 @@ public class OutputServiceThread extends Thread{
         }
     }
 
+    /**
+     * Puts Message into the pipeline. They will be printed to console in the order in which they are put.
+     * @param message message to be printed. MessageType.FILE will print out that the file has been finished.
+     *                MessageType.FOLDER will additionally print out a current intermediary result of the Histogram
+     *                processing. MessageType.FINISH will terminate this Thread.
+     * @throws InterruptedException if Thread is interrupted
+     */
     public void put(Message message) throws InterruptedException {
         queue.put(message);
     }

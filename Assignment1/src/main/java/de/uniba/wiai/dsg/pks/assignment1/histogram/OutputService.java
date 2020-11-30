@@ -6,17 +6,18 @@ import net.jcip.annotations.NotThreadSafe;
 import java.util.Arrays;
 import java.util.Formatter;
 
-@NotThreadSafe
+
 /**
- * Diese Klasse kümmert sich nur um den Output auf der Konsole. Die kann später
- * hoffentlich einfach in einen Thread gepackt werden.
+ * Offers methods to log the finalisation of a processed file or a processed directory to console. The log messages
+ * are serially numbered, starting from 1.
  */
+@NotThreadSafe
 public class OutputService {
     private int lineNumber = 1;
 
     /**
-     * Prints a message to console that tells the user that the input directory has been finished and outputs the
-     * intermediary result of the histogram. Also increments the attribute lineNumber of this OutputService.
+     * Prints a message to console that tells the user that "directoryPath" has been finished and also outputs the
+     * intermediary result of the histogram.
      * @param directoryPath path of the directory that has been processed
      */
     public void logProcessedDirectory(String directoryPath, Histogram histogram){
@@ -34,8 +35,7 @@ public class OutputService {
     }
 
     /**
-     * Prints a message to console that tells the user that the input file has been finished. Also increments the
-     * attribute lineNumber of this OutputService.
+     * Prints a message to console that tells the user that "filePath" has been finished.
      * @param filePath path of the file that has been finished
      */
     public void logProcessedFile(String filePath){

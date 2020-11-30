@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -13,8 +14,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
+@NotThreadSafe
 /**
- * Der Master-Thread, der die einzelnen Verzeichnisthreads startet.
+ * Central class for starting and joining Worker Threads, which in turn analyse files in a directory.
+ * The class is not threadsafe, hence only one MasterThread should be used at a time.
+ *
+ * It implements a Strategy pattern, so that it can either process the root directory with low level or
+ * high level methods only. This choice can be made via the "Service type" field of the constructor.
+ *
+ * The number of concurrently working Worker Threads is restricted to a fixed number. It will not surpass the number
+ * of available kernels on the executing machine divided by (1 - blockingCoefficent).
  */
 public class MasterThread extends Thread{
     private final Histogram histogram;
@@ -83,9 +92,11 @@ public class MasterThread extends Thread{
     }
 
     /**
-     * Starts the processing. Starts one thread per directory, but the current number of
-     * threads should not be more than the maximal number of threads.
-     * @param rootFolder
+     * Scans through the root folder and looks for directories. After the root folder has been fully scanned,
+     * the files in it are processed.
+     * @param rootFolder folder to scan through
+     * @throws IOException if I/O error occurred during processing of the folder
+     * @throws InterruptedException if Thread is interrupted
      */
     public void traverseDirectory(String rootFolder) throws IOException, InterruptedException {
         Path folder = Paths.get(rootFolder);
@@ -103,6 +114,11 @@ public class MasterThread extends Thread{
         processFilesInFolder(rootFolder);
     }
 
+    /**
+     * Starts a Worker to process the files in a given root folder.
+     * @param rootFolder folder to process
+     * @throws InterruptedException if Thread is interrupted
+     */
     private void processFilesInFolder(String rootFolder) throws InterruptedException {
         threadSemaphore.acquire();
         Thread worker = new Worker(rootFolder, this);
@@ -110,6 +126,9 @@ public class MasterThread extends Thread{
         worker.start();
     }
 
+    /**
+     * Interrupts all worker threads that have been started so far as well as the OutputThread.
+     */
     private void shutDown() {
         outputThread.interrupt();
         for (Thread worker: threads) {

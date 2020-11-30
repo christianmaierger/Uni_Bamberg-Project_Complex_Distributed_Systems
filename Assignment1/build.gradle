@@ -49,7 +49,7 @@ repositories {
 }
 
 run {
-    args = ["GUI", "src/main/resources/data", "txt"]
+    args = ["GUI", "src/main/resources/data", "java"]
 }
 
 test {

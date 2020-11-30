@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +12,12 @@ import java.nio.file.Paths;
 import java.util.List;
 
 
+/**
+ * Processes the files inside the given root folder and analyses letter distribution and the number of files,
+ * processed files and processed lines. The results are updated to the MasterThread Histogram of the
+ * MasterThread defined in the constructor parameter.
+ */
+@ThreadSafe
 public class Worker extends Thread {
     private final String rootFolder;
     private final MasterThread masterThread;
@@ -31,6 +38,7 @@ public class Worker extends Thread {
             //FIXME: Hier bringt es ja gar nichts, die exception irgendwie weiterzugeben, weil es keine thread gibt,
             //der sie catchen könnte, oder? Ist ok für InterruptedException, aber nicht für IO, weil dann kann man ja
             //gar nicht zurückmelden, dass es einen IO-Fehler gab. Dafür evtl über ein Feld mit dem Service kommunizieren?
+            //Bzw. man bräuhcte wahrscheinlich einen UncaughtExceptionHandler.
         } finally{
             masterThread.getThreadSemaphore().release();
         }

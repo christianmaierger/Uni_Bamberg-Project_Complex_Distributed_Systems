@@ -1,10 +1,19 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 
+import net.jcip.annotations.NotThreadSafe;
+
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-//TODO: methoden implementierung?
+//FIXME: methoden implementierung?
+
+/**
+ * Low level implementation of a BlockingQueue with only the methods needed for Assignment 1.
+ * It is threadsafe if only put() and take() are used, and not functional or threadsafe at all for other methods.
+ * @param <E> Class to be held in the BlockingQueue
+ */
+@NotThreadSafe
 public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
     private final int capacity;
     private final List<E> entries;
