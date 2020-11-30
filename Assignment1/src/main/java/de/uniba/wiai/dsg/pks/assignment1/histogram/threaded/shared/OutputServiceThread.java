@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelBlockingQueue;
+import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.util.concurrent.ArrayBlockingQueue;
@@ -20,6 +21,8 @@ import java.util.concurrent.BlockingQueue;
 public class OutputServiceThread extends Thread{
     private final static int MESSAGE_CAPACITY = 500;
     private final OutputService outputService;
+
+    @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;
 
     public OutputServiceThread(Service type){

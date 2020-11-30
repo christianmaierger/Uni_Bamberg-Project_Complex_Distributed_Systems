@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
+import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
@@ -26,11 +27,21 @@ import java.util.concurrent.Semaphore;
  * of available kernels on the executing machine divided by (1 - blockingCoefficent).
  */
 public class MasterThread extends Thread{
+    @GuardedBy(value = "booleanSemaphore")
     private final Histogram histogram;
+
+    @GuardedBy(value = "itself")
     private final String rootFolder;
+
+    @GuardedBy(value = "itself")
     private final String fileExtension;
+
+    @GuardedBy(value = "itself")
     private final Semaphore threadSemaphore;
+
+    @GuardedBy(value = "itself")
     private final Semaphore booleanSemaphore;
+
     private final OutputServiceThread outputThread;
     private final List<Thread> threads;
 

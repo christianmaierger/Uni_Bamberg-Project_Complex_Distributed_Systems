@@ -1,5 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel;
 
+import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 
 import java.util.*;
@@ -15,8 +16,12 @@ import java.util.concurrent.TimeUnit;
  */
 @NotThreadSafe
 public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
+    @GuardedBy(value = "lock")
     private final int capacity;
+
+    @GuardedBy(value = "lock")
     private final List<E> entries;
+
     private final Object lock = new Object();
 
     public LowLevelBlockingQueue(int capacity){
@@ -84,8 +89,6 @@ public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
     public boolean offer(E e, long timeout, TimeUnit unit) throws InterruptedException {
         return false;
     }
-
-
 
     @Override
     public E poll(long timeout, TimeUnit unit) throws InterruptedException {
