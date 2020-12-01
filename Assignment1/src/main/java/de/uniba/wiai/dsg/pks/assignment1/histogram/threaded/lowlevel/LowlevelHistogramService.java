@@ -5,14 +5,14 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MasterThread;
-import net.jcip.annotations.NotThreadSafe;
+import net.jcip.annotations.ThreadSafe;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 
-@NotThreadSafe
+@ThreadSafe
 public class LowlevelHistogramService implements HistogramService {
 	private boolean ioExceptionThrown;
 
