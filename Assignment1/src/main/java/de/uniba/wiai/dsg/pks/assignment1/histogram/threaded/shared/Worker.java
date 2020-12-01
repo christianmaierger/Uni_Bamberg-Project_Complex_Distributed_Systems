@@ -36,7 +36,6 @@ public class Worker extends Thread {
         try{
             processFiles();
             updateSharedHistogram();
-            throw new IOException();
         } catch (InterruptedException ignored) {
         } catch (IOException ignored) {
             masterThread.getHistogramService().setIoExceptionThrown(true);

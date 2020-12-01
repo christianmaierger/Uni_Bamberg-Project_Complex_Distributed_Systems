@@ -14,7 +14,7 @@ import java.util.Objects;
 
 @NotThreadSafe
 public class LowlevelHistogramService implements HistogramService {
-	private boolean ioExceptionThrown = false;
+	private boolean ioExceptionThrown;
 
 	public LowlevelHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -37,6 +37,7 @@ public class LowlevelHistogramService implements HistogramService {
 			throw new HistogramServiceException("Root directory must be a directory");
 		}
 
+		ioExceptionThrown = false;
 		Histogram histogram = new Histogram();
 		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.LOW_LEVEL, 0.3, this);
 
