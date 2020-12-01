@@ -55,7 +55,6 @@ public class SequentialHistogramService implements HistogramService {
 		return histogram;
 	}
 
-	@Override
 	public void setIoExceptionThrown(boolean value) {
 		throw new UnsupportedOperationException();
 	}
