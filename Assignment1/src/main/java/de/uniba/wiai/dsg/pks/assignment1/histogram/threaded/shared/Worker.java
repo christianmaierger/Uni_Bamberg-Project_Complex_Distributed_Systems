@@ -34,11 +34,10 @@ public class Worker extends Thread {
         try{
             processFiles();
             updateSharedHistogram();
-        } catch (InterruptedException | IOException ignored) {
-            //FIXME: Hier bringt es ja gar nichts, die exception irgendwie weiterzugeben, weil es keine thread gibt,
-            //der sie catchen könnte, oder? Ist ok für InterruptedException, aber nicht für IO, weil dann kann man ja
-            //gar nicht zurückmelden, dass es einen IO-Fehler gab. Dafür evtl über ein Feld mit dem Service kommunizieren?
-            //Bzw. man bräuhcte wahrscheinlich einen UncaughtExceptionHandler.
+        } catch (InterruptedException ignored) {
+
+        } catch (IOException ignored) {
+            masterThread.getHistogramService().setIoExceptionThrown(true);
         } finally{
             masterThread.getThreadSemaphore().release();
         }
@@ -48,6 +47,7 @@ public class Worker extends Thread {
         Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
+
                 if (Files.isRegularFile(path)){
                     localHistogram.setFiles(localHistogram.getFiles() + 1);
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(masterThread.getFileExtension());

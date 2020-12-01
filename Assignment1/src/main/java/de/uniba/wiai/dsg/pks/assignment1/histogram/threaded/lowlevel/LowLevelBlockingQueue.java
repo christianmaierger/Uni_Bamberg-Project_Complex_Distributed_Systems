@@ -8,6 +8,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 //FIXME: methoden implementierung?
+// UnsupportedOperationException werfen!
 
 /**
  * Low level implementation of a BlockingQueue with only the methods needed for Assignment 1.

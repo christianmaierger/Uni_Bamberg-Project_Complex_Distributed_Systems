@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelSemaphore;
 import net.jcip.annotations.GuardedBy;
@@ -33,6 +34,7 @@ public class MasterThread extends Thread{
     @GuardedBy(value = "itself")
     private final String rootFolder;
 
+    //FIXME: annotation wegmachen???
     @GuardedBy(value = "itself")
     private final String fileExtension;
 
@@ -44,14 +46,16 @@ public class MasterThread extends Thread{
 
     private final OutputServiceThread outputThread;
     private final List<Thread> threads;
+    private final HistogramService histogramService;
 
-    public MasterThread(String rootFolder, String fileExtension, Histogram histogram, Service type, double blockingCoefficient){
+    public MasterThread(String rootFolder, String fileExtension, Histogram histogram, Service type, double blockingCoefficient, HistogramService histogramService){
        super("MasterThread");
        this.fileExtension = fileExtension;
        this.histogram = histogram;
        this.rootFolder = rootFolder;
        this.outputThread = new OutputServiceThread(type);
        this.threads = new ArrayList<>();
+       this.histogramService = histogramService;
 
        int kernels = Runtime.getRuntime().availableProcessors();
        int maxNumberOfConcurrentThreads = (int) Math.ceil(kernels / (1 - blockingCoefficient));
@@ -97,7 +101,10 @@ public class MasterThread extends Thread{
             outputThread.put(new Message(MessageType.FINISH));
             outputThread.join();
 
-        } catch (IOException | InterruptedException ignored1) {
+        } catch (IOException io) {
+            histogramService.setIoExceptionThrown(true);
+            shutDown();
+        } catch (InterruptedException exception){
             shutDown();
         }
     }
@@ -150,5 +157,9 @@ public class MasterThread extends Thread{
     @Override
     public String toString() {
         return "MasterThread";
+    }
+
+    public HistogramService getHistogramService(){
+        return this.histogramService;
     }
 }

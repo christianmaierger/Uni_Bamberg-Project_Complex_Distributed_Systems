@@ -14,6 +14,7 @@ import java.util.Objects;
 
 @ThreadSafe
 public class LowlevelHistogramService implements HistogramService {
+	private boolean ioExceptionThrown = false;
 
 	public LowlevelHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -37,7 +38,7 @@ public class LowlevelHistogramService implements HistogramService {
 		}
 
 		Histogram histogram = new Histogram();
-		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.LOW_LEVEL, 0.3);
+		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.LOW_LEVEL, 0.3, this);
 
 		try{
 			masterThread.start();
@@ -46,9 +47,16 @@ public class LowlevelHistogramService implements HistogramService {
 			masterThread.interrupt();
 			throw new HistogramServiceException("Execution has been interrupted.");
 		}
+		if(ioExceptionThrown){
+			throw new HistogramServiceException("IOException occurred while processing of folder.");
+		}
 		return histogram;
 	}
 
+
+	public void setIoExceptionThrown(boolean value){
+		this.ioExceptionThrown = value;
+	}
 
 	@Override
 	public String toString() {

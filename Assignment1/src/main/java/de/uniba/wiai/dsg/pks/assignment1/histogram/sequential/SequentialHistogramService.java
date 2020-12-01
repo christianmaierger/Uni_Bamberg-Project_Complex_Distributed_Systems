@@ -56,6 +56,11 @@ public class SequentialHistogramService implements HistogramService {
 	}
 
 	@Override
+	public void setIoExceptionThrown(boolean value) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public String toString() {
 		return "SequentialHistogramService";
 	}
