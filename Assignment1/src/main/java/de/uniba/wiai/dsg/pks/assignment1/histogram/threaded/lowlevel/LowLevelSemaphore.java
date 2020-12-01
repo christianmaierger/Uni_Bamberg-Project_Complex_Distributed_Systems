@@ -6,10 +6,10 @@ import net.jcip.annotations.ThreadSafe;
 import java.util.concurrent.Semaphore;
 
 
-@ThreadSafe
 /**
- * Low level implementation of an unfair Semephore with choosable capacity.
+ * Low level implementation of an unfair Semephore with arbitrary capacity.
  */
+@ThreadSafe
 public class LowLevelSemaphore extends Semaphore {
     @GuardedBy(value = "lock")
     private int capacity;

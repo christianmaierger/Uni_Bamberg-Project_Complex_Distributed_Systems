@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.List;
 @ThreadSafe
 public class Worker extends Thread {
     private final String rootFolder;
+    @GuardedBy(value = "masterThread.booleanSemaphore")
     private final MasterThread masterThread;
     private final Histogram localHistogram;
 
@@ -34,10 +36,11 @@ public class Worker extends Thread {
         try{
             processFiles();
             updateSharedHistogram();
+            throw new IOException();
         } catch (InterruptedException ignored) {
-
         } catch (IOException ignored) {
             masterThread.getHistogramService().setIoExceptionThrown(true);
+            masterThread.interrupt();
         } finally{
             masterThread.getThreadSemaphore().release();
         }
@@ -47,7 +50,6 @@ public class Worker extends Thread {
         Path folder = Paths.get(rootFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
-
                 if (Files.isRegularFile(path)){
                     localHistogram.setFiles(localHistogram.getFiles() + 1);
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(masterThread.getFileExtension());

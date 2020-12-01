@@ -8,7 +8,7 @@ import net.jcip.annotations.Immutable;
  * Contains a message for the OutputServiceThread to print. Messages can be of type Message.FOLDER,
  * Message.FILE or Message.FINISH and can contain a path to print and/or a Histogram.
  */
-public class Message {
+public final class Message {
     private final MessageType type;
     private final String path;
     private final Histogram histogram;

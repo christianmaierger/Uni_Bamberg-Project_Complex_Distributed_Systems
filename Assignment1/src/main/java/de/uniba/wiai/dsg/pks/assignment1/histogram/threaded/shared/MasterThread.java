@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-@NotThreadSafe
+
 /**
  * Central class for starting and joining Worker Threads, which in turn analyse files in a directory.
  * The class is not threadsafe, hence only one MasterThread should be used at a time.
@@ -27,15 +27,11 @@ import java.util.concurrent.Semaphore;
  * The number of concurrently working Worker Threads is restricted to a fixed number. It will not surpass the number
  * of available kernels on the executing machine divided by (1 - blockingCoefficent).
  */
+@NotThreadSafe
 public class MasterThread extends Thread{
     @GuardedBy(value = "booleanSemaphore")
     private final Histogram histogram;
-
-    @GuardedBy(value = "itself")
     private final String rootFolder;
-
-    //FIXME: annotation wegmachen???
-    @GuardedBy(value = "itself")
     private final String fileExtension;
 
     @GuardedBy(value = "itself")
@@ -147,7 +143,7 @@ public class MasterThread extends Thread{
     /**
      * Interrupts all worker threads that have been started so far as well as the OutputThread.
      */
-    private void shutDown() {
+    public void shutDown() {
         outputThread.interrupt();
         for (Thread worker: threads) {
             worker.interrupt();

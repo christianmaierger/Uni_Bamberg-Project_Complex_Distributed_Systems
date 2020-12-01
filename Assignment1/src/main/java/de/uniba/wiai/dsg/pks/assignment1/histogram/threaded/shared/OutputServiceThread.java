@@ -9,7 +9,7 @@ import net.jcip.annotations.NotThreadSafe;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-@NotThreadSafe
+
 /**
  * A Thread responsible for printing received Messages to console. It offers a public put method to enqueue Messages.
  * It will print all Messages in the order in which they are placed until it either receives a poison pill,
@@ -18,8 +18,9 @@ import java.util.concurrent.BlockingQueue;
  * It can be instantiated as using only high level or only low level methods via the "Service type" parameter
  * of the constructor. It is not threadsafe and only one instance should be used at a time.
  */
+@NotThreadSafe
 public class OutputServiceThread extends Thread{
-    private final static int MESSAGE_CAPACITY = 500;
+    private final static int MESSAGE_CAPACITY = 5000;
     private final OutputService outputService;
 
     @GuardedBy(value = "itself")
@@ -31,7 +32,7 @@ public class OutputServiceThread extends Thread{
         if(Service.HIGH_LEVEL.equals(type)){
             this.queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY);
         } else {
-            this.queue = new LowLevelBlockingQueue<>(MESSAGE_CAPACITY);
+            this.queue = new LowLevelBlockingQueue<>();
         }
     }
 

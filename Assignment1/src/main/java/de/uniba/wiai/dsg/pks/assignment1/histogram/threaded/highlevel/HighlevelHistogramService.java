@@ -5,16 +5,16 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MasterThread;
-import net.jcip.annotations.ThreadSafe;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 
-@ThreadSafe
+@NotThreadSafe
 public class HighlevelHistogramService implements HistogramService {
-	private boolean ioExceptionThrown = false;
+	private volatile boolean ioExceptionThrown = false;
 
 	public HighlevelHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR

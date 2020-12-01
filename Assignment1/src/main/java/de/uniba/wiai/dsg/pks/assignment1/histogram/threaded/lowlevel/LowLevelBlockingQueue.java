@@ -7,38 +7,29 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-//FIXME: methoden implementierung?
-// UnsupportedOperationException werfen!
 
 /**
  * Low level implementation of a BlockingQueue with only the methods needed for Assignment 1.
- * It is threadsafe if only put() and take() are used, and not functional or threadsafe at all for other methods.
+ * It is not functional for any methods other than put(E entry) and take().
  * @param <E> Class to be held in the BlockingQueue
  */
 @NotThreadSafe
 public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
     @GuardedBy(value = "lock")
-    private final int capacity;
-
-    @GuardedBy(value = "lock")
     private final List<E> entries;
 
     private final Object lock = new Object();
 
-    public LowLevelBlockingQueue(int capacity){
-        this.capacity = capacity;
+    public LowLevelBlockingQueue(){
         this.entries = new ArrayList<>();
     }
 
     @Override
-    public void put(E entry) throws InterruptedException {
+    public void put(E entry) {
         if(!Objects.nonNull(entry)){
             throw new NullPointerException("Entry is null and cannot be added to LowLevelBlockingQueue.");
         }
         synchronized (lock){
-            while(entries.size() >= capacity){
-                lock.wait();
-            }
             entries.add(entry);
             lock.notifyAll();
         }
@@ -58,116 +49,116 @@ public class LowLevelBlockingQueue<E> implements BlockingQueue<E> {
 
     @Override
     public boolean add(E e) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean offer(E e) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public E remove() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public E poll() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public E element() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public E peek() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean offer(E e, long timeout, TimeUnit unit) throws InterruptedException {
-        return false;
+    public boolean offer(E e, long timeout, TimeUnit unit) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public E poll(long timeout, TimeUnit unit) throws InterruptedException {
-        return null;
+    public E poll(long timeout, TimeUnit unit) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public int remainingCapacity() {
-        return 0;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean remove(Object o) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean addAll(Collection<? extends E> c) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void clear() {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public int size() {
-        return 0;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean isEmpty() {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean contains(Object o) {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Iterator<E> iterator() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Object[] toArray() {
-        return new Object[0];
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public <T> T[] toArray(T[] a) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public int drainTo(Collection<? super E> c) {
-        return 0;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public int drainTo(Collection<? super E> c, int maxElements) {
-        return 0;
+        throw new UnsupportedOperationException();
     }
 }
