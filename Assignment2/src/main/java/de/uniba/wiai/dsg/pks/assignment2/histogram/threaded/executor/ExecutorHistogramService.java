@@ -40,11 +40,11 @@ public class ExecutorHistogramService implements HistogramService {
 		Histogram histogram = new Histogram();
 
 		// neuen ThreadPool erzeugen und callable wohl master starten, das dann alles handelt und callables für Verzeichnisse startet
-		ExecutorService masterService = Executors.newCachedThreadPool();
+		ExecutorService masterExcecutor = Executors.newCachedThreadPool();
 
 
-		MasterCallable masterCallable = new MasterCallable();
-		Future<Histogram> masterResultFuture = masterService.submit(masterCallable);
+		MasterCallable masterCallable = new MasterCallable(masterExcecutor, rootDirectory, fileExtension);
+		Future<Histogram> masterResultFuture = masterExcecutor.submit(masterCallable);
 
 		// überlegen ob man hier was machen soll, während master callable läuft
 
@@ -70,18 +70,18 @@ public class ExecutorHistogramService implements HistogramService {
 		} finally {
 
 			// korrektes herunterfahren des masterServiceThreadpools so aus Übung kopiert
-			masterService.shutdown();
+			masterExcecutor.shutdown();
 			try {
 				// Wait a while for existing tasks to terminate
-				if (!masterService.awaitTermination(60, TimeUnit.SECONDS)) {
-					masterService.shutdownNow(); // Cancel currently executing tasks
+				if (!masterExcecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+					masterExcecutor.shutdownNow(); // Cancel currently executing tasks
 					// Wait a while for tasks to respond to being cancelled
-					if (!masterService.awaitTermination(60, TimeUnit.SECONDS))
+					if (!masterExcecutor.awaitTermination(60, TimeUnit.SECONDS))
 						System.err.println("Pool did not terminate");
 				}
 			} catch (InterruptedException ie) {
 				// (Re-)Cancel if current thread also interrupted
-				masterService.shutdownNow();
+				masterExcecutor.shutdownNow();
 				// Preserve interrupt status
 				Thread.currentThread().interrupt();
 			}

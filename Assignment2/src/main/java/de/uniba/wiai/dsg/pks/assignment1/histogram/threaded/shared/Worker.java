@@ -38,7 +38,7 @@ public class Worker extends Thread {
             updateSharedHistogram();
         } catch (InterruptedException ignored) {
         } catch (IOException ignored) {
-            masterThread.getHistogramService().setIoExceptionThrown(true);
+          //  masterThread.getHistogramService().setIoExceptionThrown(true);
             masterThread.interrupt();
         } finally{
             masterThread.getThreadSemaphore().release();

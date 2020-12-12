@@ -98,7 +98,7 @@ public class MasterThread extends Thread{
             outputThread.join();
 
         } catch (IOException io) {
-            histogramService.setIoExceptionThrown(true);
+          //  histogramService.setIoExceptionThrown(true);
             shutDown();
         } catch (InterruptedException exception){
             shutDown();
