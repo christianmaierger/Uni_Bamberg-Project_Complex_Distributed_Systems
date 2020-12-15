@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,10 +20,12 @@ public class TraverseFolderTask implements Callable<Histogram> {
     String rootFolder;
     String fileExtension;
     Histogram localHistogram = new Histogram();
+    OutputServiceCallable outputServiceCallable;
 
-    public TraverseFolderTask(ExecutorService executorService, String rootFolder, String fileExtension) {
+    public TraverseFolderTask(ExecutorService executorService, String rootFolder, String fileExtension, OutputServiceCallable outputCallable) {
     this.rootFolder =rootFolder;
     this.fileExtension=fileExtension;
+    this.outputServiceCallable = outputCallable;
     }
 
 
@@ -40,6 +43,7 @@ public class TraverseFolderTask implements Callable<Histogram> {
 
         // bei nicht aufsummiert ist es ja logischerweise immer 1
         localHistogram.setDirectories(1);
+        //
         return localHistogram;
     }
 
@@ -93,11 +97,11 @@ public class TraverseFolderTask implements Callable<Histogram> {
 
     private void logProcessedFile(String path) throws InterruptedException {
         Message message = new Message(MessageType.FILE, path);
-//        masterThread.getOutputThread().put(message);
+       outputServiceCallable.put(message);
     }
 
     private void logProcessedDirectory() throws InterruptedException {
-    //    Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
-      //  masterThread.getOutputThread().put(message);
+        Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
+        outputServiceCallable.put(message);
     }
 }

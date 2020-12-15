@@ -61,7 +61,7 @@ public class ExecutorHistogramService implements HistogramService {
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-			// zb minvalue um auf Fehler hinzuweisen, hier besseres zu überlegen
+			// zb auf Fehler hinzuweisen, hier besseres zu überlegen
 			//TODo
 			throw new HistogramServiceException("Execution has been interrupted.");
 		} catch (ExecutionException e) {

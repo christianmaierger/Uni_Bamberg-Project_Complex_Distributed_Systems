@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -18,6 +19,7 @@ public class MasterCallable implements Callable<Histogram> {
     // liste wird ja nur von diesem thread verwendet? ok? besser concurrent Struktur?
     // oder gleich blockingqueue verwenden?
     List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
+    OutputServiceCallable outputCallable = new OutputServiceCallable();
 
 
     public MasterCallable(ExecutorService masterExcecutor, String rootFolder, String fileExtension) {
@@ -28,12 +30,14 @@ public class MasterCallable implements Callable<Histogram> {
 
     public Histogram call() throws InterruptedException, ExecutionException {
         //TODO: Suchbereich weiter zerlegen ODER Berechnung durchfuehren
-        Histogram currentResultHistogram = new Histogram();
-        // eigentlich können die doch alle den gleichen Executor verwenden? ABer kann ich den immutable machen?
 
+        // Outputservice erzeigen und starten
+        // Anlegen eines Singlethreadpools für den OutputService alleine
+        // so kann beim herunterfahren der getrennt bearbeitet werden
+        ExecutorService singleThrededPoolForOutput = Executors.newSingleThreadExecutor();
+        singleThrededPoolForOutput.submit(outputCallable);
 
-
-        Histogram resultHistogram = new Histogram();
+       Histogram resultHistogram = new Histogram();
         try {
             traverseDirectory(rootFolder);
         } catch (IOException e) {
@@ -94,7 +98,7 @@ public class MasterCallable implements Callable<Histogram> {
 
     private Future<Histogram> processFilesInFolder(String rootFolder) throws InterruptedException {
         // das wird der lustige teil, wie ich ohne geteilte daten die Verzeichnisse bearbeite und was ich übergebe
-        TraverseFolderTask folderTask = new TraverseFolderTask(executorService, rootFolder, fileExtension);
+        TraverseFolderTask folderTask = new TraverseFolderTask(executorService, rootFolder, fileExtension, outputCallable);
         // submit blockiert nicht, das stost nur an, das get auf das future wartet dann  bis erg echt da ist
 
         Future<Histogram> result = executorService.submit(folderTask);
