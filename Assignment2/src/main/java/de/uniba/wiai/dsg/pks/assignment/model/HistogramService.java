@@ -16,4 +16,6 @@ public interface HistogramService {
 	 *             does not exist)
 	 */
 	Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException;
+
+	void setIoExceptionThrown(boolean value);
 }
