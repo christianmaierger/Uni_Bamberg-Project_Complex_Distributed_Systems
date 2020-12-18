@@ -72,6 +72,29 @@ public class Histogram implements Serializable {
 		this.processedFiles = processedFiles;
 	}
 
+
+	public void addUpAllFields(Histogram subResultHistogram) {
+		// schleife ist eher bäuerlich, aber auf sf konnte ich keinen besseren weg finden?
+		// stream für alle Aufgaben?
+
+		long[] oldHist= this.getDistribution();
+		long[] newHist= subResultHistogram.getDistribution();
+
+		for(int i=0; i<26 ; i++) {
+			oldHist[i]= oldHist[i] + newHist[i];
+		}
+
+
+		this.setDistribution(oldHist);
+
+		this.setFiles(this.getFiles() + subResultHistogram.getFiles());
+		this.setProcessedFiles(this.getProcessedFiles() + subResultHistogram.getProcessedFiles());
+		this.setDirectories(this.getDirectories() + subResultHistogram.getDirectories());
+		this.setLines(this.getLines() + subResultHistogram.getLines());
+
+	}
+
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

@@ -18,6 +18,11 @@ public class ForkJoinHistogramService implements HistogramService {
 	}
 
 	@Override
+	public void setIoExceptionThrown(boolean value) {
+
+	}
+
+	@Override
 	public String toString() {
 		return "ForkJoinHistogramService";
 	}
