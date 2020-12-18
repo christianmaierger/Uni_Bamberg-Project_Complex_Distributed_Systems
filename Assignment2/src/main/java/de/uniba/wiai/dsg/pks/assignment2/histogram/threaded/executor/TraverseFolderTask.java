@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
@@ -12,15 +13,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 public class TraverseFolderTask implements Callable<Histogram> {
-    String rootFolder;
-    String fileExtension;
+    private final String rootFolder;
+    private final String fileExtension;
     Histogram localHistogram = new Histogram();
-    OutputServiceCallable outputServiceCallable;
+    private final OutputServiceCallable outputServiceCallable;
 
     public TraverseFolderTask(ExecutorService executorService, String rootFolder, String fileExtension, OutputServiceCallable outputCallable) {
     this.rootFolder =rootFolder;
@@ -30,15 +32,14 @@ public class TraverseFolderTask implements Callable<Histogram> {
 
 
 
-    public Histogram call() throws InterruptedException, ExecutionException {
-
-
-
+    public Histogram call() throws InterruptedException, ExecutionException, HistogramServiceException {
 
         try {
             processFiles();
         } catch (IOException e) {
-            e.printStackTrace();
+            //todo
+            HistogramServiceException ex = new HistogramServiceException(e);
+            throw ex;
         }
 
 
@@ -107,4 +108,6 @@ public class TraverseFolderTask implements Callable<Histogram> {
         Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
         outputServiceCallable.put(message);
     }
+
+
 }

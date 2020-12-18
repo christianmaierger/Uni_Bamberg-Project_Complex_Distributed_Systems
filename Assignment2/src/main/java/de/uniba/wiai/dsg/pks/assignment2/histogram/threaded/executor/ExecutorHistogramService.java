@@ -5,7 +5,9 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment.model.Service;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MasterThread;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
+import net.jcip.annotations.GuardedBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +16,7 @@ import java.util.Objects;
 import java.util.concurrent.*;
 
 public class ExecutorHistogramService implements HistogramService {
+
 
 	public ExecutorHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
@@ -65,22 +68,20 @@ public class ExecutorHistogramService implements HistogramService {
 			resultHistogram = result.get();
 
 		} catch (InterruptedException e) {
-			e.printStackTrace();
-			// zb auf Fehler hinzuweisen, hier besseres zu überlegen
 			//TODo
-			throw new HistogramServiceException("Execution has been interrupted.");
+			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
 			//todo
-			throw new HistogramServiceException("Execution has been interrupted.");
+			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} finally {
 			// korrektes herunterfahren des masterServiceThreadpools so aus Übung kopiert
 			masterExcecutor.shutdown();
 			try {
 				// Wait a while for existing tasks to terminate
-				if (!masterExcecutor.awaitTermination(10, TimeUnit.MILLISECONDS)) {
+				if (!masterExcecutor.awaitTermination(30, TimeUnit.MILLISECONDS)) {
 					masterExcecutor.shutdownNow(); // Cancel currently executing tasks
 					// Wait a while for tasks to respond to being cancelled
-					if (!masterExcecutor.awaitTermination(10, TimeUnit.MILLISECONDS))
+					if (!masterExcecutor.awaitTermination(30, TimeUnit.MILLISECONDS))
 						System.err.println("Pool did not terminate");
 				}
 			} catch (InterruptedException ie) {
@@ -94,14 +95,16 @@ public class ExecutorHistogramService implements HistogramService {
 		// wenn fertig dann auch outputThreadpool runterfahren
 		// und was wenn nicht? while schleife eher super bäuerliche Taktik, aber guarded wait ist ja auch eher nix?
 
-		if(outputCallable.isFinished()) {
+
+
+
 			singleThrededPoolForOutput.shutdown();
 			try {
 				// Wait a while for existing tasks to terminate
-				if (!singleThrededPoolForOutput.awaitTermination(10, TimeUnit.MILLISECONDS)) {
+				if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS)) {
 					singleThrededPoolForOutput.shutdownNow(); // Cancel currently executing tasks
 					// Wait a while for tasks to respond to being cancelled
-					if (!singleThrededPoolForOutput.awaitTermination(10, TimeUnit.MILLISECONDS))
+					if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS))
 						System.err.println("Pool did not terminate");
 				}
 			} catch (InterruptedException ie) {
@@ -109,7 +112,6 @@ public class ExecutorHistogramService implements HistogramService {
 				singleThrededPoolForOutput.shutdownNow();
 				// Preserve interrupt status
 				Thread.currentThread().interrupt();
-			}
 		}
 
 

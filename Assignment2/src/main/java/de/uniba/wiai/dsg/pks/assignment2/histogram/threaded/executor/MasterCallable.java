@@ -1,6 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
 
 import java.io.IOException;
@@ -13,16 +16,18 @@ import java.util.List;
 import java.util.concurrent.*;
 
 public class MasterCallable implements Callable<Histogram> {
-    ExecutorService executorService;
-    String rootFolder;
-    String fileExtension;
+    private final ExecutorService executorService;
+    private final String rootFolder;
+    private final String fileExtension;
     // liste wird ja nur von diesem thread verwendet? ok? besser concurrent Struktur?
     // oder gleich blockingqueue verwenden?
     List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
 
-    OutputServiceCallable outputCallable;
+    private final OutputServiceCallable outputCallable;
 
     Histogram resultHistogram = new Histogram();
+
+
 
 
     public MasterCallable(ExecutorService masterExcecutor, String rootFolder, String fileExtension, OutputServiceCallable outputCallable) {
@@ -60,31 +65,15 @@ public class MasterCallable implements Callable<Histogram> {
 
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
-            // zb minvalue um auf Fehler hinzuweisen
-            // return null wohl nicht so gut, weil wann soll ich
-            return null;
+            HistogramServiceException exception = new HistogramServiceException(e);
+            throw e;
+
         } catch (ExecutionException e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            executorService.shutdown();
-
-            try {
-                executorService.awaitTermination(10, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-
-                // shutdown durchsetzen
-                executorService.shutdownNow();
-
-                //flag erhalten
-                Thread.currentThread().interrupt();
-            }
+            HistogramServiceException exception = new HistogramServiceException(e);
+            throw e;
         }
 
-        // jetzt kann man auch schauen ob outputCallable fertig ist und shutdown versuchen
-        // in Executor gemoved, damit es dort runtergefahren werden kann auch wenn hier kein histogram returned wird
-
+        outputCallable.put(new Message(MessageType.FINISH));
 
         return resultHistogram;
     }

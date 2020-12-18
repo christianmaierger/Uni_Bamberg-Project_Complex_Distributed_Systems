@@ -17,26 +17,23 @@ import java.util.concurrent.BlockingQueue;
  * of the constructor. It is not threadsafe and only one instance should be used at a time.
  */
 @NotThreadSafe
-public class OutputServiceCallable extends Thread{
-    private final static int MESSAGE_CAPACITY = 5000;
+public class OutputServiceCallable implements Runnable{
     private final OutputService outputService;
-    boolean finished = false;
-
     @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;
 
+
+
     public OutputServiceCallable(){
-        super("OutputService");
+       queue = new ArrayBlockingQueue<>(500, true);
         this.outputService = new OutputService();
-        this.queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY);
     }
 
-    public boolean isFinished() {
-        return finished;
-    }
+
 
     @Override
     public void run(){
+        boolean finished = false;
         while(!finished){
             try {
                 Message message = queue.take();
