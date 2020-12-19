@@ -72,8 +72,9 @@ public class MasterCallable implements Callable<Histogram> {
             // da wir nur returnernen macht er allerdings nochmal finally block, zum guten behandeln, eigentlich muss ich dann oben aber keine
             // executerex mehr catchen?
             //throw exception;
-            return null;
-        } finally {
+
+
+            // finally geht hier nicht, weil ich will hier noch nicht runterfahren, das schmeist mir immer Fehler
             executorService.shutdown();
             try {
                 // Wait a while for existing tasks to terminate
@@ -89,7 +90,12 @@ public class MasterCallable implements Callable<Histogram> {
                 // Preserve interrupt status
                 Thread.currentThread().interrupt();
             }
+
+            return null;
         }
+
+
+
 
 
         outputCallable.put(new Message(MessageType.FINISH));
