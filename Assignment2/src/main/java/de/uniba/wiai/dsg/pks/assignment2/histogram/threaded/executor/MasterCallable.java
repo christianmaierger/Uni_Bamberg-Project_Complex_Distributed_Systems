@@ -67,8 +67,30 @@ public class MasterCallable implements Callable<Histogram> {
 
         } catch (ExecutionException e) {
             ExecutionException exception = new ExecutionException(e);
-            throw exception;
+            // todo
+            // in der Übung wird bei eXecutionex ein Rückgabewert gegeben der sicherstellt, dass kein echtes Ergebnis durchgeht
+            // da wir nur returnernen macht er allerdings nochmal finally block, zum guten behandeln, eigentlich muss ich dann oben aber keine
+            // executerex mehr catchen?
+            //throw exception;
+            return null;
+        } finally {
+            executorService.shutdown();
+            try {
+                // Wait a while for existing tasks to terminate
+                if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+                    executorService.shutdownNow(); // Cancel currently executing tasks
+                    // Wait a while for tasks to respond to being cancelled
+                    if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS))
+                        System.err.println("Pool did not terminate");
+                }
+            } catch (InterruptedException ie) {
+                // (Re-)Cancel if current thread also interrupted
+                executorService.shutdownNow();
+                // Preserve interrupt status
+                Thread.currentThread().interrupt();
+            }
         }
+
 
         outputCallable.put(new Message(MessageType.FINISH));
 
