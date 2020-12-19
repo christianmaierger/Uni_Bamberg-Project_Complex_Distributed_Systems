@@ -22,4 +22,9 @@ public class ForkJoinHistogramService implements HistogramService {
 		return "ForkJoinHistogramService";
 	}
 
+	@Override
+	public void setIoExceptionThrown(boolean value) {
+		// TODO: Was soll hiermit passieren? Methode hatten wir für Ass1 im Interface gebraucht...
+		throw new UnsupportedOperationException();
+	}
 }
