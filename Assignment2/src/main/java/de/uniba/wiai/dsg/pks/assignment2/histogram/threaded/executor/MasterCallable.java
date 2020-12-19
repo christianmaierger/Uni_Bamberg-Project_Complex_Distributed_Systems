@@ -21,11 +21,11 @@ public class MasterCallable implements Callable<Histogram> {
     private final String fileExtension;
     // liste wird ja nur von diesem thread verwendet? ok? besser concurrent Struktur?
     // oder gleich blockingqueue verwenden?
-    List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
+    private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
 
     private final OutputServiceCallable outputCallable;
 
-    Histogram resultHistogram = new Histogram();
+    private final Histogram resultHistogram = new Histogram();
 
 
 
@@ -37,7 +37,7 @@ public class MasterCallable implements Callable<Histogram> {
         this.outputCallable = outputCallable;
     }
 
-    public Histogram call() throws InterruptedException, ExecutionException {
+    public Histogram call() throws InterruptedException, ExecutionException, HistogramServiceException {
         //TODO: Suchbereich weiter zerlegen ODER Berechnung durchfuehren
 
         // Outputservice erzeigen und starten
@@ -49,7 +49,7 @@ public class MasterCallable implements Callable<Histogram> {
         try {
             traverseDirectory(rootFolder);
         } catch (IOException e) {
-            e.printStackTrace();
+           //todo
         }
 
 
@@ -66,11 +66,11 @@ public class MasterCallable implements Callable<Histogram> {
             }
         } catch (InterruptedException e) {
             HistogramServiceException exception = new HistogramServiceException(e);
-            throw e;
+            throw exception;
 
         } catch (ExecutionException e) {
             HistogramServiceException exception = new HistogramServiceException(e);
-            throw e;
+            throw exception;
         }
 
         outputCallable.put(new Message(MessageType.FINISH));
@@ -78,8 +78,8 @@ public class MasterCallable implements Callable<Histogram> {
         return resultHistogram;
     }
 
-    public void traverseDirectory(String rootFolder) throws IOException, InterruptedException {
-        Path folder = Paths.get(rootFolder);
+    public void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
+        Path folder = Paths.get(currentFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if(Thread.currentThread().isInterrupted()){
@@ -94,18 +94,17 @@ public class MasterCallable implements Callable<Histogram> {
             }
         }
         // so jetzt ist hier ein dir fertig mit seinen files wenn processFilesInFolder returned
-        Future<Histogram> result = processFilesInFolder(rootFolder);
+        Future<Histogram> result = processFilesInFolder(currentFolder);
         // vielleicht Future Liste machen und am Ende erst auslesen, bzw an Queue für print übergeben?
         listOfFuturesRepresentingEachFolder.add(result);
     }
 
-    private Future<Histogram> processFilesInFolder(String rootFolder) throws InterruptedException {
+    private Future<Histogram> processFilesInFolder(String folder) throws InterruptedException {
         // das wird der lustige teil, wie ich ohne geteilte daten die Verzeichnisse bearbeite und was ich übergebe
-        TraverseFolderTask folderTask = new TraverseFolderTask(executorService, rootFolder, fileExtension, outputCallable);
+        TraverseFolderTask folderTask = new TraverseFolderTask(executorService, folder, fileExtension, outputCallable);
         // submit blockiert nicht, das stost nur an, das get auf das future wartet dann  bis erg echt da ist
 
         Future<Histogram> result = executorService.submit(folderTask);
-
 
         return result;
     }

@@ -63,12 +63,20 @@ public class ExecutorHistogramService implements HistogramService {
 
 		Histogram resultHistogram = new Histogram();
 		// was amchen bei IO Exeption?
+
+		// abfarage macht doch keinen SIn oder? get wartet ja eh, wenns noch nicht da ist
+		// kann ich Future.cancel() irgendwie brauchen, eigentlich nicht? wenn get nicht klappt ist ja eh schluss mit der Task?
+		boolean resultIsDone = result.isDone();
+
+		if result
 		try {
 			// get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
 			resultHistogram = result.get();
 
 		} catch (InterruptedException e) {
 			//TODo
+			// outPutPool gleich schonmal zum shutdown auffordern, dass der nix neues mehr nimmt?
+			// und dann später normale beenden Prozedur?
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
 			//todo
@@ -78,10 +86,10 @@ public class ExecutorHistogramService implements HistogramService {
 			masterExcecutor.shutdown();
 			try {
 				// Wait a while for existing tasks to terminate
-				if (!masterExcecutor.awaitTermination(30, TimeUnit.MILLISECONDS)) {
+				if (!masterExcecutor.awaitTermination(60, TimeUnit.MILLISECONDS)) {
 					masterExcecutor.shutdownNow(); // Cancel currently executing tasks
 					// Wait a while for tasks to respond to being cancelled
-					if (!masterExcecutor.awaitTermination(30, TimeUnit.MILLISECONDS))
+					if (!masterExcecutor.awaitTermination(60, TimeUnit.MILLISECONDS))
 						System.err.println("Pool did not terminate");
 				}
 			} catch (InterruptedException ie) {

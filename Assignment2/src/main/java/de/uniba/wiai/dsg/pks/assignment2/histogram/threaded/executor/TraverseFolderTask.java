@@ -32,15 +32,11 @@ public class TraverseFolderTask implements Callable<Histogram> {
 
 
 
-    public Histogram call() throws InterruptedException, ExecutionException, HistogramServiceException {
+    public Histogram call() throws InterruptedException, IOException {
 
-        try {
+
             processFiles();
-        } catch (IOException e) {
-            //todo
-            HistogramServiceException ex = new HistogramServiceException(e);
-            throw ex;
-        }
+
 
 
         localHistogram.setDirectories(1);
@@ -68,6 +64,7 @@ public class TraverseFolderTask implements Callable<Histogram> {
                     }
                 }
             }
+
         }
     }
 
