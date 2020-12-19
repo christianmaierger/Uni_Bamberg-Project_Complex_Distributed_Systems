@@ -37,7 +37,7 @@ public class MasterCallable implements Callable<Histogram> {
         this.outputCallable = outputCallable;
     }
 
-    public Histogram call() throws InterruptedException, ExecutionException, HistogramServiceException {
+    public Histogram call() throws InterruptedException, IOException, ExecutionException {
         //TODO: Suchbereich weiter zerlegen ODER Berechnung durchfuehren
 
         // Outputservice erzeigen und starten
@@ -46,11 +46,8 @@ public class MasterCallable implements Callable<Histogram> {
 
 
 
-        try {
             traverseDirectory(rootFolder);
-        } catch (IOException e) {
-           //todo
-        }
+
 
 
         try {
@@ -65,11 +62,11 @@ public class MasterCallable implements Callable<Histogram> {
 
             }
         } catch (InterruptedException e) {
-            HistogramServiceException exception = new HistogramServiceException(e);
+            InterruptedException exception = new InterruptedException("Was interrupted");
             throw exception;
 
         } catch (ExecutionException e) {
-            HistogramServiceException exception = new HistogramServiceException(e);
+            ExecutionException exception = new ExecutionException(e);
             throw exception;
         }
 

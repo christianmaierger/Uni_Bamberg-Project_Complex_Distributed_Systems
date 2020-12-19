@@ -1,6 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared;
 
-import de.uniba.wiai.dsg.pks.assignment.model.Service;
+
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 

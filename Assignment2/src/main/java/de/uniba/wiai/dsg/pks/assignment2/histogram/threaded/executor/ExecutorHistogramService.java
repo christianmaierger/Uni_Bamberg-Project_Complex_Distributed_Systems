@@ -68,7 +68,7 @@ public class ExecutorHistogramService implements HistogramService {
 		// kann ich Future.cancel() irgendwie brauchen, eigentlich nicht? wenn get nicht klappt ist ja eh schluss mit der Task?
 		boolean resultIsDone = result.isDone();
 
-		if result
+
 		try {
 			// get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
 			resultHistogram = result.get();
@@ -99,11 +99,6 @@ public class ExecutorHistogramService implements HistogramService {
 				Thread.currentThread().interrupt();
 			}
 		}
-
-		// wenn fertig dann auch outputThreadpool runterfahren
-		// und was wenn nicht? while schleife eher super bäuerliche Taktik, aber guarded wait ist ja auch eher nix?
-
-
 
 
 			singleThrededPoolForOutput.shutdown();
