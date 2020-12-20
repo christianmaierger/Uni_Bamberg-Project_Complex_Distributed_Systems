@@ -18,6 +18,8 @@ import java.util.concurrent.BlockingQueue;
  */
 @NotThreadSafe
 public class OutputServiceCallable implements Runnable{
+
+    @GuardedBy(value ="itself")
     private final OutputService outputService;
     @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;

@@ -4,6 +4,8 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,10 +17,15 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
+@ThreadSafe
 public class TraverseFolderTask implements Callable<Histogram> {
+    @GuardedBy(value ="itself")
     private final String rootFolder;
+    @GuardedBy(value ="itself")
     private final String fileExtension;
-    Histogram localHistogram = new Histogram();
+    @GuardedBy(value ="itself")
+    private final Histogram localHistogram = new Histogram();
+    @GuardedBy(value ="itself")
     private final OutputServiceCallable outputServiceCallable;
 
     public TraverseFolderTask(ExecutorService executorService, String rootFolder, String fileExtension, OutputServiceCallable outputCallable) {
