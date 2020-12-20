@@ -45,16 +45,12 @@ public class ExecutorHistogramService implements HistogramService {
 		// neuen ThreadPool erzeugen und callable wohl master starten, das dann alles handelt und callables für Verzeichnisse startet
 		ExecutorService masterExcecutor = Executors.newCachedThreadPool();
 
-		// ich denke es ist besser den outPut hier zu starten fürs shutwown management
-		OutputServiceCallable outputCallable = new OutputServiceCallable();
-		ExecutorService singleThrededPoolForOutput = Executors.newSingleThreadExecutor();
-		singleThrededPoolForOutput.submit(outputCallable);
 
-		MasterCallable masterCallable = new MasterCallable(masterExcecutor, rootDirectory, fileExtension, outputCallable);
+
+
+		MasterCallable masterCallable = new MasterCallable(masterExcecutor, rootDirectory, fileExtension);
 		Future<Histogram> result;
 		result = masterExcecutor.submit(masterCallable);
-
-		// überlegen ob man hier was machen soll, während master callable läuft
 
 
 		// auf wert aus master callable warten und dann shutdown denk ich mal!
@@ -64,60 +60,31 @@ public class ExecutorHistogramService implements HistogramService {
 		Histogram resultHistogram = new Histogram();
 		// was amchen bei IO Exeption?
 
-		// abfarage macht doch keinen SIn oder? get wartet ja eh, wenns noch nicht da ist
-		// kann ich Future.cancel() irgendwie brauchen, eigentlich nicht? wenn get nicht klappt ist ja eh schluss mit der Task?
-		boolean resultIsDone = result.isDone();
-
 
 		try {
 			// get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
 			resultHistogram = result.get();
 
 		} catch (InterruptedException e) {
-			//TODo
-			// outPutPool gleich schonmal zum shutdown auffordern, dass der nix neues mehr nimmt?
-			// und dann später normale beenden Prozedur?
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
-			//todo
-			// throwen oder null returnen? beides verhindert return eines histograms?
-			// gleiche Thematik beim MasterCallable
+			//todo anderer print
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} finally {
-			// korrektes herunterfahren des masterServiceThreadpools so aus Übung kopiert
-			masterExcecutor.shutdown();
+			// korrektes herunterfahren mit direktem Abbruch der Verarbeitung
+			masterExcecutor.shutdownNow();
 			try {
-				// Wait a while for existing tasks to terminate
-				if (!masterExcecutor.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-					masterExcecutor.shutdownNow(); // Cancel currently executing tasks
-					// Wait a while for tasks to respond to being cancelled
-					if (!masterExcecutor.awaitTermination(60, TimeUnit.MILLISECONDS))
+					if (!masterExcecutor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
 						System.err.println("Pool did not terminate");
-				}
-			} catch (InterruptedException ie) {
-				// (Re-)Cancel if current thread also interrupted
-				masterExcecutor.shutdownNow();
+					}
+		} catch (InterruptedException ie) {
 				// Preserve interrupt status
 				Thread.currentThread().interrupt();
 			}
 		}
 
 
-			singleThrededPoolForOutput.shutdown();
-			try {
-				// Wait a while for existing tasks to terminate
-				if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-					singleThrededPoolForOutput.shutdownNow(); // Cancel currently executing tasks
-					// Wait a while for tasks to respond to being cancelled
-					if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS))
-						System.err.println("Pool did not terminate");
-				}
-			} catch (InterruptedException ie) {
-				// (Re-)Cancel if current thread also interrupted
-				singleThrededPoolForOutput.shutdownNow();
-				// Preserve interrupt status
-				Thread.currentThread().interrupt();
-		}
+
 
 
 		return resultHistogram;
@@ -125,7 +92,7 @@ public class ExecutorHistogramService implements HistogramService {
 
 	@Override
 	public void setIoExceptionThrown(boolean value) {
-
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

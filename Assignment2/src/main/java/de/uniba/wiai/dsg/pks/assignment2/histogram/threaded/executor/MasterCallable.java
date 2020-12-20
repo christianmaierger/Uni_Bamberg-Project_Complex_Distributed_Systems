@@ -4,10 +4,12 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,122 +25,109 @@ public class MasterCallable implements Callable<Histogram> {
     @GuardedBy(value ="itself")
     private final ExecutorService executorService;
     @GuardedBy(value ="itself")
+    private final ExecutorService outputPool;
+    @GuardedBy(value ="itself")
     private final String rootFolder;
     @GuardedBy(value ="itself")
     private final String fileExtension;
     // liste wird ja nur von diesem thread verwendet? ok? besser concurrent Struktur?
     // oder gleich blockingqueue verwenden?
-    @GuardedBy(value ="itself")
+
     private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
     @GuardedBy(value ="itself")
     private final OutputServiceCallable outputCallable;
-    @GuardedBy(value ="itself")
-    private final Histogram resultHistogram = new Histogram();
 
 
 
 
-    public MasterCallable(ExecutorService masterExcecutor, String rootFolder, String fileExtension, OutputServiceCallable outputCallable) {
+
+
+    public MasterCallable(ExecutorService masterExcecutor, String rootFolder, String fileExtension) {
         this.executorService= masterExcecutor;
         this.rootFolder = rootFolder;
         this.fileExtension = fileExtension;
-        this.outputCallable = outputCallable;
+        this.outputCallable = new OutputServiceCallable();
+        this.outputPool = Executors.newSingleThreadExecutor();
+
     }
 
-    public Histogram call() throws InterruptedException, IOException, ExecutionException {
+    public Histogram call() throws InterruptedException, ExecutionException, IOException {
         //TODO: Suchbereich weiter zerlegen ODER Berechnung durchfuehren
+        Histogram resultHistogram = new Histogram();
 
-        // Outputservice erzeigen und starten
-        // Anlegen eines Singlethreadpools für den OutputService alleine
-        // so kann beim herunterfahren der getrennt bearbeitet werden
-
+      outputPool.submit(outputCallable);
 
 
-            traverseDirectory(rootFolder);
+      try {
+        traverseDirectory(rootFolder);
 
 
-        try {
-            // get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
-            for (Future<Histogram> result: listOfFuturesRepresentingEachFolder) {
-               // hier jetzt result pro folder, könnte man aufzählen
-                // so grad ist es quatsch überschreibt ja immer nur resultHist
+        for (Future<Histogram> result: listOfFuturesRepresentingEachFolder) {
 
-                Histogram subResult = result.get();
-                subResult.getDirectories();
-                resultHistogram.addUpAllFields(subResult);
-
+                Histogram subResult;
+                subResult = result.get();
+               resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
             }
-        } catch (InterruptedException e) {
-            InterruptedException exception = new InterruptedException("Was interrupted");
-            throw exception;
-
-        } catch (ExecutionException e) {
-            ExecutionException exception = new ExecutionException(e);
-            // todo
-            // in der Übung wird bei eXecutionex ein Rückgabewert gegeben der sicherstellt, dass kein echtes Ergebnis durchgeht
-            // da wir nur returnernen macht er allerdings nochmal finally block, zum guten behandeln, eigentlich muss ich dann oben aber keine
-            // executerex mehr catchen?
-            //throw exception;
-
-
-            // finally geht hier nicht, weil ich will hier noch nicht runterfahren, das schmeist mir immer Fehler
-            executorService.shutdown();
-            try {
-                // Wait a while for existing tasks to terminate
-                if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-                    executorService.shutdownNow(); // Cancel currently executing tasks
-                    // Wait a while for tasks to respond to being cancelled
-                    if (!executorService.awaitTermination(60, TimeUnit.MILLISECONDS))
-                        System.err.println("Pool did not terminate");
-                }
-            } catch (InterruptedException ie) {
-                // (Re-)Cancel if current thread also interrupted
-                executorService.shutdownNow();
-                // Preserve interrupt status
-                Thread.currentThread().interrupt();
-            }
-
-            return null;
-        }
+          outputCallable.put(new Message(MessageType.FINISH));
+          return resultHistogram;
+      } catch (InterruptedException e) {
+          shutdownPrinter(outputPool);
+          throw e;
+      } catch (ExecutionException e) {
+          shutdownPrinter(outputPool);
+          throw e;
+      } catch (IOException e) {
+          shutdownPrinter(outputPool);
+          throw e;
+      }
 
 
 
-
-
-        outputCallable.put(new Message(MessageType.FINISH));
-
-        return resultHistogram;
     }
 
-    public void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
+    private void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
         Path folder = Paths.get(currentFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
                 if(Thread.currentThread().isInterrupted()){
-                    executorService.shutdown();
-                    return;
+                   shutdownPrinter(outputPool);
+                    throw new InterruptedIOException();
                 }
                 if (Files.isDirectory(path)){
-                    // statt reku Funktionsaufruf einfach neues MasterCallable für neues Verzeichnis?
-                    // Aber brächte das was aus komplexeren Code?
                     traverseDirectory(path.toString());
                 }
             }
         }
-        // so jetzt ist hier ein dir fertig mit seinen files wenn processFilesInFolder returned
         Future<Histogram> result = processFilesInFolder(currentFolder);
-        // vielleicht Future Liste machen und am Ende erst auslesen, bzw an Queue für print übergeben?
         listOfFuturesRepresentingEachFolder.add(result);
     }
 
-    private Future<Histogram> processFilesInFolder(String folder) throws InterruptedException {
-        // das wird der lustige teil, wie ich ohne geteilte daten die Verzeichnisse bearbeite und was ich übergebe
-        TraverseFolderTask folderTask = new TraverseFolderTask(executorService, folder, fileExtension, outputCallable);
-        // submit blockiert nicht, das stost nur an, das get auf das future wartet dann  bis erg echt da ist
+    private Future<Histogram> processFilesInFolder(String folder) {
 
+        TraverseFolderCallable folderTask = new TraverseFolderCallable(folder, fileExtension, outputCallable);
         Future<Histogram> result = executorService.submit(folderTask);
 
         return result;
+    }
+
+
+    private void shutdownPrinter(ExecutorService executor) throws InterruptedException {
+        executor.shutdown();
+        outputCallable.put(new Message(MessageType.FINISH));
+        try {
+            // Wait a while for existing tasks to terminate
+            if (!executor.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow(); // Cancel currently executing tasks
+                // Wait a while for tasks to respond to being cancelled
+                if (!executor.awaitTermination(60, TimeUnit.MILLISECONDS))
+                    System.err.println("Pool did not terminate");
+            }
+        } catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
     }
 
     }
