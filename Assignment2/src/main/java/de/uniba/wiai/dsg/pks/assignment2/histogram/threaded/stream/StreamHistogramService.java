@@ -3,13 +3,12 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.stream;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.concurrent.*;
 
 public class StreamHistogramService implements HistogramService {
 
@@ -35,8 +34,26 @@ public class StreamHistogramService implements HistogramService {
 		}
 
 		StreamWorker streamWorker = new StreamWorker(rootDirectory, fileExtension);
-		Histogram histogram = streamWorker.calculateHistogram();
-		return histogram;
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Future<Histogram> histogramFuture = executor.submit(streamWorker);
+
+		while(!histogramFuture.isDone()){
+			if(Thread.currentThread().isInterrupted()){
+				streamWorker.stopProcessing();
+				shutDown(executor);
+				throw new HistogramServiceException("Execution has been interrupted.");
+			}
+		}
+
+		try {
+			return histogramFuture.get();
+		} catch (InterruptedException exception) {
+			throw new HistogramServiceException("Execution has been interrupted.");
+		} catch (ExecutionException exception) {
+			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
+		} finally {
+			shutDown(executor);
+		}
 	}
 
 	@Override
@@ -50,4 +67,20 @@ public class StreamHistogramService implements HistogramService {
 		return "StreamHistogramService";
 	}
 
+	private void shutDown(ExecutorService executorPool) throws HistogramServiceException {
+		// TODO: Macht das Ganze hier überhaupt Sinn, wenn der StreamWorker eh nicht auf einen Interrupt reagiert?
+		executorPool.shutdown();
+		try {
+			if (!executorPool.awaitTermination(100, TimeUnit.MILLISECONDS)) {
+				executorPool.shutdownNow();
+				if (!executorPool.awaitTermination(3, TimeUnit.SECONDS)){
+					throw new HistogramServiceException("Thread pool did not terminate.");
+				}
+			}
+		} catch (InterruptedException exception) {
+			executorPool.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+	}
 }
+

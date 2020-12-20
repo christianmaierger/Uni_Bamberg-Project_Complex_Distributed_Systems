@@ -1,13 +1,10 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment.model.Service;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.lowlevel.LowLevelBlockingQueue;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MessageType;
 import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.NotThreadSafe;
+
 
 import java.util.Arrays;
 import java.util.Formatter;
@@ -21,7 +18,6 @@ import java.util.concurrent.BlockingQueue;
  * (a Message of type MessageType.FINISH) or is interrupted.
  *
  */
-// TODO: ThreadSafety
 public class PrintService implements Runnable{
     private final static int MESSAGE_CAPACITY = 5000;
     private int lineNumber = 1;
@@ -30,7 +26,7 @@ public class PrintService implements Runnable{
     private final BlockingQueue<Message> queue;
 
     public PrintService(){
-        this.queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY);
+        this.queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY, true);
     }
 
     @Override

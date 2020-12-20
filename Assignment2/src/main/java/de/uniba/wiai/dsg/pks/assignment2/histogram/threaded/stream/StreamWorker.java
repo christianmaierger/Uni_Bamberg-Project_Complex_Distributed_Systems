@@ -9,117 +9,169 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
-public class StreamWorker {
+public class StreamWorker implements Callable<Histogram> {
     private final int WITHOUT_SUBDIRECTORIES = 1;
     private final String rootDirectory;
-    private final Histogram histogram;
     private final PrintService printer;
+    private final ExecutorService printExecutor;
     private final Predicate<Path> correctFileExtension;
+    private volatile boolean interrupted = false;
 
     public StreamWorker(String rootDirectory, String fileExtension) {
         this.rootDirectory = rootDirectory;
-        this.histogram = new Histogram();
         this.printer = new PrintService();
-        correctFileExtension = (path) -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(fileExtension);
+        this.printExecutor = Executors.newSingleThreadExecutor();
+        this.correctFileExtension = (path) -> Files.isRegularFile(path)
+                && path.getFileName().toString().endsWith(fileExtension);
     }
 
-    public Histogram calculateHistogram() {
-        //Start printer
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.submit(printer);
-
-        //Traverse root folder and process each subfolder
+    @Override
+    public Histogram call() throws IOException {
+        printExecutor.submit(printer);
         try {
-            traverseRootDirectory(rootDirectory);
-            printer.put(new Message(MessageType.FINISH));
-            executor.shutdown();
-            executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
-        } catch (InterruptedException | IOException exception) {
-            //Handle executor termination
-            exception.printStackTrace();
-        }
-        return this.histogram;
-    }
-
-    private void processDirectory(Path folder) {
-        Histogram localHistogram = new Histogram();
-
-        try {
-            try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
-                localHistogram.setFiles(streamOfPaths
-                        .parallel()
-                        .filter(Files::isRegularFile)
-                        .count());
-            }
-            try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
-                localHistogram.setProcessedFiles(streamOfPaths
-                        .parallel()
-                        .filter(correctFileExtension)
-                        .count());
-            }
-            try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
-                localHistogram.setLines(streamOfPaths
-                        .parallel()
-                        .filter(correctFileExtension)
-                        .map(FileProcessingUtils::getLinesPerFile)
-                        .mapToLong(Long::longValue)
-                        .sum());
-            }
-            try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
-                localHistogram.setDistribution(streamOfPaths
-                        .parallel()
-                        .filter(correctFileExtension)
-                        .map(FileProcessingUtils::getFileAsLines)
-                        .map(FileProcessingUtils::countLettersImperative)
-                        .reduce(new long[Histogram.ALPHABET_SIZE], FileProcessingUtils::accumulateDistributions));
-            }
-            logDirectoryFinished(folder, localHistogram);
-            updateGlobalHistogram(localHistogram);
-        } catch (IOException | InterruptedException exception) {
-            exception.printStackTrace();
+            Histogram histogram = traverseRootDirectory();
+            shutDownPrinter();
+            return histogram;
+        } catch (IOException exception) {
+            shutDownPrinter();
+            throw new IOException("An I/O Exception occurred.");
+        } catch (RuntimeException exception) {
+            shutDownPrinter();
+            throw new RuntimeException(exception.getMessage(), exception.getCause());
         }
     }
 
-    private void logDirectoryFinished(Path folder, Histogram localHistogram) throws IOException, InterruptedException {
+    public void stopProcessing() {
+        interrupted = true;
+    }
+
+    private Histogram accumulateHistograms(Histogram a, Histogram b) {
+        checkForInterrupt();
+        Histogram result = new Histogram();
+        result.setDirectories(a.getDirectories() + b.getDirectories());
+        result.setFiles(a.getFiles() + b.getFiles());
+        result.setProcessedFiles(a.getProcessedFiles() + b.getProcessedFiles());
+        result.setLines(a.getLines() + b.getLines());
+        result.setDistribution(FileUtils.sumUpDistributions(a.getDistribution(), b.getDistribution()));
+        return result;
+    }
+
+    private void checkForInterrupt() {
+        if (interrupted) {
+            shutDownPrinter();
+            throw new RuntimeException("Execution has been interrupted.");
+        }
+    }
+
+    private long countFiles(Path folder) throws IOException {
+        checkForInterrupt();
         try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
-            streamOfPaths
+            return (streamOfPaths
+                    .parallel()
+                    .filter(Files::isRegularFile)
+                    .count());
+        }
+    }
+
+    private long countFilesWithCorrectExtension(Path folder) throws IOException {
+        checkForInterrupt();
+        try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
+            return streamOfPaths
                     .parallel()
                     .filter(correctFileExtension)
-                    .forEach(path -> {
-                        try {
-                            printer.put(new Message(MessageType.FILE, path.toString()));
-                        } catch (InterruptedException exception) {
-                            exception.printStackTrace();
-                        }
-                    });
+                    .count();
         }
-        printer.put(new Message(MessageType.FOLDER, folder.toString(), localHistogram));
     }
 
-    private void traverseRootDirectory(String rootDirectory) throws IOException {
+    private long[] countDistribution(Path folder) throws IOException {
+        checkForInterrupt();
+        try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
+            return (streamOfPaths
+                    .parallel()
+                    .filter(correctFileExtension)
+                    .map(FileUtils::getFileAsLines)
+                    .map(FileUtils::countLetters)
+                    .reduce(new long[Histogram.ALPHABET_SIZE], FileUtils::sumUpDistributions));
+        }
+    }
+
+    private long countLines(Path folder) throws IOException {
+        checkForInterrupt();
+        try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
+            return (streamOfPaths
+                    .parallel()
+                    .filter(correctFileExtension)
+                    .map(FileUtils::getLinesPerFile)
+                    .mapToLong(Long::longValue)
+                    .sum());
+        }
+    }
+
+    private void logDirectoryFinished(Path folder, Histogram histogram) throws IOException {
+        checkForInterrupt();
+        try (Stream<Path> streamOfPaths = Files.walk(folder, WITHOUT_SUBDIRECTORIES)) {
+            streamOfPaths
+                    .filter(correctFileExtension)
+                    .forEach(this::logFile);
+        }
+        histogram.setDirectories(1);
+        try {
+            printer.put(new Message(MessageType.FOLDER, folder.toString(), histogram));
+        } catch (InterruptedException exception) {
+            checkForInterrupt();
+        }
+    }
+
+    private void logFile(Path path) {
+        try {
+            printer.put(new Message(MessageType.FILE, path.toString()));
+        } catch (InterruptedException exception) {
+            checkForInterrupt();
+        }
+    }
+
+    private Histogram processDirectory(Path folder) {
+        checkForInterrupt();
+        Histogram histogram = new Histogram();
+        try {
+            histogram.setFiles(countFiles(folder));
+            histogram.setProcessedFiles(countFilesWithCorrectExtension(folder));
+            histogram.setLines(countLines(folder));
+            histogram.setDistribution(countDistribution(folder));
+            logDirectoryFinished(folder, histogram);
+        } catch (IOException exception) {
+            throw new RuntimeException("An I/O Exception occurred.");
+        }
+        return histogram;
+    }
+
+    private void shutDownPrinter() {
+        try {
+            printer.put(new Message(MessageType.FINISH));
+            printExecutor.shutdown();
+            printExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            printExecutor.shutdownNow();
+        }
+    }
+
+    private Histogram traverseRootDirectory() throws IOException {
+        Histogram histogram;
         Path folder = Paths.get(rootDirectory);
         try (Stream<Path> streamOfPaths = Files.walk(folder)) {
-            streamOfPaths
+            histogram = streamOfPaths
                     .parallel()
                     .filter(Files::isDirectory)
-                    .forEach(this::processDirectory);
-            //FIXME: Ist das hier parallel genug?
+                    .map(this::processDirectory)
+                    .reduce(new Histogram(), this::accumulateHistograms);
         }
-    }
-
-    private void updateGlobalHistogram(Histogram localHistogram) {
-        histogram.setDirectories(histogram.getDirectories() + 1);
-        histogram.setFiles(histogram.getFiles() + localHistogram.getFiles());
-        histogram.setProcessedFiles(histogram.getProcessedFiles() + localHistogram.getProcessedFiles());
-        histogram.setLines(histogram.getLines() + localHistogram.getLines());
-        for (int i = 0; i < Histogram.ALPHABET_SIZE; i++) {
-            histogram.getDistribution()[i] += localHistogram.getDistribution()[i];
-        }
+        return histogram;
     }
 }
