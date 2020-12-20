@@ -17,7 +17,6 @@ import java.util.concurrent.BlockingQueue;
  * A Runnable responsible for printing received Messages to console. It offers a public put method to enqueue Messages.
  * It will print all Messages in the order in which they are placed until it either receives a poison pill
  * (a Message of type MessageType.FINISH) or is interrupted.
- *
  */
 @NotThreadSafe
 public class PrintService implements Runnable{
@@ -92,5 +91,4 @@ public class PrintService implements Runnable{
         System.out.println(stringBuilder);
         lineNumber++;
     }
-
 }

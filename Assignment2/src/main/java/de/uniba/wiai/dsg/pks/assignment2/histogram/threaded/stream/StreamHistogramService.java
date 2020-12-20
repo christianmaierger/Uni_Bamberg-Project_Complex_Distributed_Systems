@@ -21,7 +21,7 @@ public class StreamHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		if(!Objects.nonNull(rootDirectory) || !Objects.nonNull(fileExtension)){
+		if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
 			throw new HistogramServiceException("Neither root directory nor file extension must be null.");
 		}
 		if(rootDirectory.isBlank() || fileExtension.isBlank()){
@@ -39,17 +39,10 @@ public class StreamHistogramService implements HistogramService {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		Future<Histogram> histogramFuture = executor.submit(streamWorker);
 
-		while(!histogramFuture.isDone()){
-			if(Thread.currentThread().isInterrupted()){
-				streamWorker.stopProcessing();
-				shutDown(executor);
-				throw new HistogramServiceException("Execution has been interrupted.");
-			}
-		}
-
 		try {
 			return histogramFuture.get();
 		} catch (InterruptedException exception) {
+			streamWorker.stopProcessing();
 			throw new HistogramServiceException("Execution has been interrupted.");
 		} catch (ExecutionException exception) {
 			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
@@ -60,7 +53,6 @@ public class StreamHistogramService implements HistogramService {
 
 	@Override
 	public void setIoExceptionThrown(boolean value) {
-		// TODO: Was soll hiermit passieren? Methode hatten wir für Ass1 im Interface gebraucht...
 		throw new UnsupportedOperationException();
 	}
 
@@ -69,19 +61,13 @@ public class StreamHistogramService implements HistogramService {
 		return "StreamHistogramService";
 	}
 
-	private void shutDown(ExecutorService executorPool) throws HistogramServiceException {
-		// TODO: Macht das Ganze hier überhaupt Sinn, wenn der StreamWorker eh nicht auf einen Interrupt reagiert?
-		// Oder braucht man das immer, damit der ExecutorService auch wirklich beendet ist?
-		executorPool.shutdown();
+	private void shutDown(ExecutorService executorPool){
+		executorPool.shutdownNow();
 		try {
-			if (!executorPool.awaitTermination(100, TimeUnit.MILLISECONDS)) {
-				executorPool.shutdownNow();
-				if (!executorPool.awaitTermination(3, TimeUnit.SECONDS)){
-					throw new HistogramServiceException("Thread pool did not terminate.");
-				}
+			if (!executorPool.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+				System.err.println("Thread pool did not terminate.");
 			}
 		} catch (InterruptedException exception) {
-			executorPool.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
 	}

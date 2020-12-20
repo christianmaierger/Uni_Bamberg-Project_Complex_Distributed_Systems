@@ -58,14 +58,13 @@ public class StreamWorker implements Callable<Histogram> {
         printExecutor.submit(printer);
         try {
             Histogram histogram = traverseRootDirectory();
-            shutDownPrinter();
             return histogram;
         } catch (IOException exception) {
-            shutDownPrinter();
             throw new IOException("An I/O Exception occurred.");
         } catch (RuntimeException exception) {
-            shutDownPrinter();
             throw new RuntimeException(exception.getMessage(), exception.getCause());
+        } finally {
+            shutDownPrinter();
         }
     }
 
@@ -145,7 +144,6 @@ public class StreamWorker implements Callable<Histogram> {
                     .filter(correctFileExtension)
                     .forEach(this::logFile);
         }
-        histogram.setDirectories(1);
         try {
             printer.put(new Message(MessageType.FOLDER, folder.toString(), histogram));
         } catch (InterruptedException exception) {
@@ -169,6 +167,7 @@ public class StreamWorker implements Callable<Histogram> {
             histogram.setProcessedFiles(countFilesWithCorrectExtension(folder));
             histogram.setLines(countLines(folder));
             histogram.setDistribution(countDistribution(folder));
+            histogram.setDirectories(1);
             logDirectoryFinished(folder, histogram);
         } catch (IOException exception) {
             throw new RuntimeException("An I/O Exception occurred.");
@@ -180,7 +179,7 @@ public class StreamWorker implements Callable<Histogram> {
         try {
             printer.put(new Message(MessageType.FINISH));
             printExecutor.shutdown();
-            printExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+            printExecutor.awaitTermination(60, TimeUnit.MILLISECONDS);
         } catch (InterruptedException exception) {
             printExecutor.shutdownNow();
         }

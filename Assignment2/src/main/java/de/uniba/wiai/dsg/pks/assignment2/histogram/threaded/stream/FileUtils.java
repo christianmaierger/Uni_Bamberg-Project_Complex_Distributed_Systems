@@ -7,7 +7,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-
 import java.util.stream.Stream;
 
 /**
@@ -24,7 +23,6 @@ public class FileUtils {
     public static long getLinesPerFile(Path path){
         try (Stream<String> lines = Files.lines(path)) {
             return lines.count();
-            //TODO: Problem mit Charset?
         } catch (IOException | UncheckedIOException exception) {
             throw new RuntimeException("An I/O error occurred.");
         }
@@ -38,7 +36,6 @@ public class FileUtils {
     public static List<String> getFileAsLines(Path path){
         try {
             return Files.readAllLines(path);
-            //TODO: Problem mit Charset?
         } catch (IOException | UncheckedIOException exception) {
             throw new RuntimeException("An I/O error occurred.");
         }
