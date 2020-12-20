@@ -4,6 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MessageType;
 import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
 
 
 import java.util.Arrays;
@@ -18,6 +19,7 @@ import java.util.concurrent.BlockingQueue;
  * (a Message of type MessageType.FINISH) or is interrupted.
  *
  */
+@NotThreadSafe
 public class PrintService implements Runnable{
     private final static int MESSAGE_CAPACITY = 5000;
     private int lineNumber = 1;
@@ -49,7 +51,7 @@ public class PrintService implements Runnable{
     }
 
     /**
-     * Puts Message into the pipeline. They will be printed to console in the order in which they are put.
+     * Puts Messages into the pipeline. They will be printed to console in the order in which they are put.
      * @param message message to be printed. MessageType.FILE will print out that the file has been finished.
      *                MessageType.FOLDER will additionally print out a current intermediary result of the Histogram
      *                processing. MessageType.FINISH will terminate this Thread.

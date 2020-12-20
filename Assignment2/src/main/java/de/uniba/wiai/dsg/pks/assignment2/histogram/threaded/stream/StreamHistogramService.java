@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.stream;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import net.jcip.annotations.ThreadSafe;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.*;
 
+@ThreadSafe
 public class StreamHistogramService implements HistogramService {
 
 	public StreamHistogramService() {
@@ -69,6 +71,7 @@ public class StreamHistogramService implements HistogramService {
 
 	private void shutDown(ExecutorService executorPool) throws HistogramServiceException {
 		// TODO: Macht das Ganze hier überhaupt Sinn, wenn der StreamWorker eh nicht auf einen Interrupt reagiert?
+		// Oder braucht man das immer, damit der ExecutorService auch wirklich beendet ist?
 		executorPool.shutdown();
 		try {
 			if (!executorPool.awaitTermination(100, TimeUnit.MILLISECONDS)) {

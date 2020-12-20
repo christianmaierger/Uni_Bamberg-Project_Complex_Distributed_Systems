@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
+@ThreadSafe
 public class StreamWorker implements Callable<Histogram> {
     private final int WITHOUT_SUBDIRECTORIES = 1;
     private final String rootDirectory;
