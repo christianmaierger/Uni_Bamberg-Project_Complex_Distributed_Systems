@@ -4,6 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.PrintService;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,6 +17,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
+/**
+ * A Callable to process a given root folder and analyses letter distribution as well as some statistical metrics
+ * about the processed files and subdirectories.
+ */
 @ThreadSafe
 public class StreamWorker implements Callable<Histogram> {
     private final int WITHOUT_SUBDIRECTORIES = 1;
@@ -25,6 +30,12 @@ public class StreamWorker implements Callable<Histogram> {
     private final Predicate<Path> correctFileExtension;
     private volatile boolean interrupted = false;
 
+    /**
+     * Create a StreamWorker with the root folder that shall be analyses and the file extension
+     * of the files which shall be considered during the analysis.
+     * @param rootDirectory String of the path to the root folder whose content shall be analysed
+     * @param fileExtension String specifying the kind of file that should be analysed
+     */
     public StreamWorker(String rootDirectory, String fileExtension) {
         this.rootDirectory = rootDirectory;
         this.printer = new PrintService();
@@ -33,6 +44,15 @@ public class StreamWorker implements Callable<Histogram> {
                 && path.getFileName().toString().endsWith(fileExtension);
     }
 
+    /**
+     * Analyses the rootDirectory of this.StreamWorker and returns the result of the analysis as a Histogram.
+     * Furthermore, messages to indicate that a files or folder has been processed are printed to console.
+     *
+     * @return Histogram representing the result of the analysis of this.rootDirectory
+     * @throws IOException if an I/O error occurs
+     * @throws RuntimeException if an I/O error occurs or the current thread is asked to stop via an interrupt or
+     *                          a call to the method stopProcessing()
+     */
     @Override
     public Histogram call() throws IOException {
         printExecutor.submit(printer);
@@ -49,6 +69,9 @@ public class StreamWorker implements Callable<Histogram> {
         }
     }
 
+    /**
+     * Stops the processing and causes the call() method to throw a RuntimeException.
+     */
     public void stopProcessing() {
         interrupted = true;
     }

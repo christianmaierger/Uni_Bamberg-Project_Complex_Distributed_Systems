@@ -10,8 +10,17 @@ import java.util.List;
 
 import java.util.stream.Stream;
 
+/**
+ * Contains static methods to process a folder and its files with regard to letter frequency analysis
+ * and file statistics.
+ */
 public class FileUtils {
 
+    /**
+     * Returns the number of lines in the input Path "path"
+     * @param path path to file whose numbers shall be counted
+     * @return number of lines in the input file
+     */
     public static long getLinesPerFile(Path path){
         try (Stream<String> lines = Files.lines(path)) {
             return lines.count();
@@ -21,6 +30,11 @@ public class FileUtils {
         }
     }
 
+    /**
+     * Returns a List<String> representation of the file at the input Path "path".
+     * @param path Path to file to convert
+     * @return List<String> of input file
+     */
     public static List<String> getFileAsLines(Path path){
         try {
             return Files.readAllLines(path);
@@ -30,6 +44,13 @@ public class FileUtils {
         }
     }
 
+    /**
+     * Counts lower- and uppercase latin alphabet letters in the given input file "file". Returns a long array
+     * with 26 fields. The first field holds the number of 'A'/'a' characters in the file, the second field the
+     * number of 'B'/'b' characters and so on.
+     * @param file List<String> file to count the letters of
+     * @return
+     */
     public static long[] countLetters(List<String> file){
         long[] distribution = new long[26];
         for (String line : file) {
@@ -46,6 +67,14 @@ public class FileUtils {
         return distribution;
     }
 
+    /**
+     * Adds two long[] arrays of size 26 field by field and returns the resulting long[] array.
+     * This can be used to combine two character distributions.
+     *
+     * @param distributionA first long[] distribution of size 26
+     * @param distributionB second long[] distribution of size 26
+     * @return
+     */
     public static long[] sumUpDistributions(long[] distributionA, long[] distributionB){
         long[] result = new long[Histogram.ALPHABET_SIZE];
         for (int i = 0; i < Histogram.ALPHABET_SIZE; i++) {
