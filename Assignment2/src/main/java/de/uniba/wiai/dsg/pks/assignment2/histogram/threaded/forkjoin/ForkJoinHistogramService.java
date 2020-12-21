@@ -3,14 +3,12 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.forkjoin;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.OutputService;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.Worker;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
 
@@ -48,17 +46,17 @@ public class ForkJoinHistogramService implements HistogramService {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-		MasterTask masterTask = new MasterTask(forkJoinPool, rootDirectory, fileExtension);
+		TraverseTask traverseTask = new TraverseTask(forkJoinPool, rootDirectory, fileExtension);
 
 		Future<Histogram> result;
 
-		result = forkJoinPool.submit(masterTask);
+		result = forkJoinPool.submit(traverseTask);
 
 		Histogram resultHistogram = new Histogram();
 
-		OutputService outputService = new OutputService();
+		PrintService printService = new PrintService();
 
-		executorService.submit((Runnable) outputService);
+		executorService.submit(printService);
 
 		try {
 			resultHistogram = result.get();

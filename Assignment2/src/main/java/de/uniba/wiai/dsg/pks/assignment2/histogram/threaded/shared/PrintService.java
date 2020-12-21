@@ -20,20 +20,20 @@ import java.util.concurrent.BlockingQueue;
  * of the constructor. It is not threadsafe and only one instance should be used at a time.
  */
 @NotThreadSafe
-public class OutputService implements Runnable{
+public class PrintService implements Runnable{
 
     private int lineNumber = 1;
 
     @GuardedBy(value ="itself")
-    private final OutputService outputService;
+    private final PrintService printService;
     @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;
 
 
 
-    public OutputService(){
+    public PrintService(){
         queue = new ArrayBlockingQueue<>(500, true);
-        this.outputService = new OutputService();
+        this.printService = new PrintService();
     }
 
 
@@ -47,9 +47,9 @@ public class OutputService implements Runnable{
                 if (MessageType.FINISH.equals(message.getType())) {
                     finished = true;
                 } else if(MessageType.FILE.equals(message.getType())){
-                    outputService.logProcessedFile(message.getPath());
+                    printService.logProcessedFile(message.getPath());
                 } else{
-                    outputService.logProcessedDirectory(message.getPath(), message.getHistogram());
+                    printService.logProcessedDirectory(message.getPath(), message.getHistogram());
                 }
             } catch (InterruptedException exception) {
                 finished = true;
