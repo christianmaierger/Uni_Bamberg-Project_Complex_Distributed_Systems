@@ -41,11 +41,10 @@ public class ForkJoinHistogramService implements HistogramService {
 		// neuen ForkJoin Pool anlegen
 		ForkJoinPool mainPool = new ForkJoinPool();
 
-		// task anlegen, gibt wohl nur eine
-		TraverseTask<Histogram> traverseTask = new TraverseTask();
 
 
-		mainPool.execute(traverseTask); // RootTask asynchron ausführen
+
+
 
 		// output dann als recursive task oder?
 		OutputServiceCallable outputCallable = new OutputServiceCallable();
@@ -54,10 +53,11 @@ public class ForkJoinHistogramService implements HistogramService {
 
 
 
+        // task anlegen, gibt wohl nur eine
+		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, outputCallable);
 
 
-
-
+		mainPool.execute(traverseTask); // RootTask asynchron ausführen
 
 		Histogram resultHistogram = new Histogram();
 
