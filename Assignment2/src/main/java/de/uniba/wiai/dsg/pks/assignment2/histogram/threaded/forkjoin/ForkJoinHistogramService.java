@@ -6,13 +6,14 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
+import net.jcip.annotations.ThreadSafe;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.*;
-
+@ThreadSafe
 public class ForkJoinHistogramService implements HistogramService {
 
 	public ForkJoinHistogramService() {

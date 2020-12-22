@@ -6,6 +6,7 @@ import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -16,7 +17,7 @@ import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
-
+@ThreadSafe
 public class TraverseTask extends RecursiveTask<Histogram> {
 
     @GuardedBy(value = "itself")
@@ -38,7 +39,7 @@ public class TraverseTask extends RecursiveTask<Histogram> {
 
 
     @Override
-    protected Histogram compute() {
+    public Histogram compute() {
         try {
             traverseDirectory(rootFolder);
             Histogram localHistogram = new Histogram();
@@ -98,7 +99,7 @@ public class TraverseTask extends RecursiveTask<Histogram> {
     }
 
     private void processFileContent(Path path, Histogram localHistogram) {
-        localHistogram.setLines(Utils.getLinesPerFile(path));
+        localHistogram.setLines(localHistogram.getLines() + Utils.getLinesPerFile(path));
         List<String> lines = Utils.getFileAsLines(path);
         long[] distribution = Utils.countLetters(lines);
         localHistogram.setDistribution(Utils.sumUpDistributions(distribution, localHistogram.getDistribution()));

@@ -6,6 +6,7 @@ import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
@@ -22,16 +23,13 @@ import java.util.concurrent.*;
 @ThreadSafe
 public class MasterCallable implements Callable<Histogram> {
 
-    @GuardedBy(value = "itself")
     private final ExecutorService executorService;
-    @GuardedBy(value = "itself")
     private final ExecutorService outputPool;
     @GuardedBy(value = "itself")
     private final String rootFolder;
     @GuardedBy(value = "itself")
     private final String fileExtension;
     private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
-    @GuardedBy(value = "itself")
     private final PrintService printService;
 
     public MasterCallable(ExecutorService masterExecutor, String rootFolder, String fileExtension) {

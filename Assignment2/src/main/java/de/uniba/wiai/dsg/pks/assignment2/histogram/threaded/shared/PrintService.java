@@ -67,7 +67,7 @@ public class PrintService implements Runnable{
      * intermediary result of the histogram.
      * @param directoryPath path of the directory that has been processed
      */
-    public void logProcessedDirectory(String directoryPath, Histogram histogram){
+    private void logProcessedDirectory(String directoryPath, Histogram histogram){
         StringBuilder stringBuilder = new StringBuilder();
         Formatter formatter = new Formatter(stringBuilder);
         formatter.format("N: %d - ", lineNumber);
@@ -85,7 +85,7 @@ public class PrintService implements Runnable{
      * Prints a message to console that tells the user that "filePath" has been finished.
      * @param filePath path of the file that has been finished
      */
-    public void logProcessedFile(String filePath){
+    private void logProcessedFile(String filePath){
         StringBuilder stringBuilder = new StringBuilder();
         Formatter formatter = new Formatter(stringBuilder);
         formatter.format("N: %d - ", lineNumber);

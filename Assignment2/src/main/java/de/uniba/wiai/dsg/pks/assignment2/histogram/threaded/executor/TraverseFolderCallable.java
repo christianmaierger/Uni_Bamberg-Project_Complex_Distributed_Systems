@@ -78,7 +78,7 @@ public class TraverseFolderCallable implements Callable<Histogram> {
      *                       for all files in that folder
      */
     private void processFileContent(Path path, Histogram localHistogram) {
-        localHistogram.setLines(Utils.getLinesPerFile(path));
+        localHistogram.setLines(localHistogram.getLines() + Utils.getLinesPerFile(path));
         List<String> lines = Utils.getFileAsLines(path);
         long[] distribution = Utils.countLetters(lines);
         localHistogram.setDistribution(Utils.sumUpDistributions(distribution, localHistogram.getDistribution()));

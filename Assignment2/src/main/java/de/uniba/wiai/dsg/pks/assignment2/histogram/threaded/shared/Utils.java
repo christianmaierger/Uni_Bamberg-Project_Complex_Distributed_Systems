@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,6 +15,7 @@ import java.util.stream.Stream;
  * Contains static methods to process a folder and its files with regard to letter frequency analysis
  * and file statistics.
  */
+@ThreadSafe
 public class Utils {
 
     /**
