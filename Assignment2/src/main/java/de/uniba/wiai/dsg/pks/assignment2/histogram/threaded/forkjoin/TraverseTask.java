@@ -48,14 +48,13 @@ public class TraverseTask extends RecursiveTask<Histogram> {
 
             Histogram resultHistogram = new Histogram();
             for (ForkJoinTask<Histogram> result : tasksRepresentingEachFolder) {
-                checkForInterrupt();
                 Histogram subResult;
-                subResult = result.join();
+                subResult = result.get();
                 resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
             }
             resultHistogram = Utils.addUpAllFields(resultHistogram, localHistogram);
             return resultHistogram;
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | ExecutionException e) {
             throw new RuntimeException(e.getMessage(), e.getCause());
         }
     }
@@ -95,7 +94,6 @@ public class TraverseTask extends RecursiveTask<Histogram> {
                     }
                 }
             }
-
         }
     }
 

@@ -83,9 +83,9 @@ public class Utils {
 
 
     /**
-     * Just adds up all fields of two histograms and returns a new histogram with their values from all fields added
+     * Adds up all fields of two histograms and returns a new histogram with their values from all fields added
      * together.
-     * *
+     *
      * @param subResultHistogram a new result as histogram which fields should be added on the fields of a given histogram
      * @param oldHistogram the histogram to which the method should add to
      * @return
@@ -100,7 +100,6 @@ public class Utils {
         }
 
         Histogram result = new Histogram();
-
         result.setDistribution(oldHistogramDistribution);
         result.setFiles(oldHistogram.getFiles() + subResultHistogram.getFiles());
         result.setProcessedFiles(oldHistogram.getProcessedFiles() + subResultHistogram.getProcessedFiles());

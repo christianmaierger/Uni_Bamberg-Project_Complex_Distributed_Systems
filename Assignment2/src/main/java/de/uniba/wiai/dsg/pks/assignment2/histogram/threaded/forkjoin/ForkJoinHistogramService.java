@@ -36,23 +36,17 @@ public class ForkJoinHistogramService implements HistogramService {
 			throw new HistogramServiceException("Root directory must be a directory");
 		}
 
-
-
-		ForkJoinPool mainPool = new ForkJoinPool();
-
 		PrintService printService = new PrintService();
 		ExecutorService singleThreadedPoolForOutput = Executors.newSingleThreadExecutor();
 		singleThreadedPoolForOutput.submit(printService);
 
+		ForkJoinPool mainPool = new ForkJoinPool();
 		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, printService, singleThreadedPoolForOutput, mainPool);
 		mainPool.execute(traverseTask);
 
 		Histogram resultHistogram;
-
-
 		try {
 			resultHistogram = traverseTask.get();
-
 		} catch (InterruptedException e) {
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
