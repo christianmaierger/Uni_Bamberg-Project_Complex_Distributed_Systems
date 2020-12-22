@@ -26,6 +26,7 @@ public class TraverseTask extends RecursiveTask<Histogram> {
     private final OutputServiceRunnable outputServiceRunnable;
     private final ExecutorService outputPool;
     private final ForkJoinPool mainPool;
+    private volatile boolean interrupted = false;
 
     List<ForkJoinTask<Histogram>> tasksRepresentingEachFolder = new LinkedList<ForkJoinTask<Histogram>>();
 
@@ -53,12 +54,12 @@ public class TraverseTask extends RecursiveTask<Histogram> {
 
                 for (ForkJoinTask<Histogram> result : tasksRepresentingEachFolder) {
 
+                    checkForInterrupt();
                     Histogram subResult;
                     subResult = result.join();
                     resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
                 }
 
-               // return resultHistogram;
 
             }
                 //if file task berechnen:
@@ -76,35 +77,31 @@ public class TraverseTask extends RecursiveTask<Histogram> {
         } catch (InterruptedException e) {
             try {
                 shutdownPrinter(outputPool);
+                RuntimeException ex = new RuntimeException();
+                throw ex;
+
             } catch (InterruptedException interruptedException) {
-                interruptedException.printStackTrace();
+              //  interruptedException.printStackTrace();
             }
-            try {
-                throw e;
-            } catch (InterruptedException interruptedException) {
-                interruptedException.printStackTrace();
-            }
-        }/* catch (ExecutionException e) {
+        } catch (RuntimeException e) {
             try {
                 shutdownPrinter(outputPool);
-            } catch (InterruptedException interruptedException) {
-                interruptedException.printStackTrace();
-            }
-            try {
                 throw e;
-            } catch (ExecutionException executionException) {
-                executionException.printStackTrace();
+            } catch (InterruptedException interruptedException) {
+                //interruptedException.printStackTrace();
+                throw e;
             }
-        } */catch (IOException e) {
+        } catch (IOException e) {
             try {
                 shutdownPrinter(outputPool);
-            } catch (InterruptedException interruptedException) {
-                interruptedException.printStackTrace();
-            }
-            try {
                 throw e;
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
+            } catch (InterruptedException | IOException interruptedException) {
+               // interruptedException.printStackTrace();
+                try {
+                    throw e;
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
+                }
             }
         }
 
@@ -116,6 +113,8 @@ public class TraverseTask extends RecursiveTask<Histogram> {
 
 
     private void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
+        checkForInterrupt();
+
         Path folder = Paths.get(currentFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
             for(Path path: stream){
@@ -160,7 +159,18 @@ public class TraverseTask extends RecursiveTask<Histogram> {
         }
     }
 
+    private void checkForInterrupt() {
+        if (interrupted) {
+            try {
+                shutdownPrinter(outputPool);
+                throw new RuntimeException("Execution has been interrupted.");
+            } catch (InterruptedException e) {
+                // interruptedException.printStackTrace();
+                throw new RuntimeException("Execution has been interrupted.");
+            }
 
+        }
+    }
 
 
     private void processFiles(de.uniba.wiai.dsg.pks.assignment.model.Histogram localHistogram) throws IOException, InterruptedException {

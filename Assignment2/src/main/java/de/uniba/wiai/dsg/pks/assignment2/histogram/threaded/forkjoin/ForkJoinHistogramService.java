@@ -39,88 +39,85 @@ public class ForkJoinHistogramService implements HistogramService {
 
 
 
-		// neuen ForkJoin Pool anlegen
 		ForkJoinPool mainPool = new ForkJoinPool();
-		
 
-		// output dann als recursive task oder?
-		OutputServiceRunnable outputCallable = new OutputServiceRunnable();
+
+		// output dann als runnable einfach?
+		OutputServiceRunnable outputRunnable = new OutputServiceRunnable();
 		ExecutorService singleThrededPoolForOutput = Executors.newSingleThreadExecutor();
-		singleThrededPoolForOutput.submit(outputCallable);
+		singleThrededPoolForOutput.submit(outputRunnable);
 
 
 
         // task anlegen, gibt wohl nur eine
-		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, outputCallable, singleThrededPoolForOutput, mainPool);
+		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, outputRunnable, singleThrededPoolForOutput, mainPool);
 
 
-		mainPool.execute(traverseTask); // RootTask asynchron ausführen
+		Future<Histogram> result =  mainPool.submit(traverseTask);
+
+
+		// über execute und direkt getten/joinen aus task oder über future und get()?
+	//	mainPool.execute(traverseTask); // RootTask asynchron ausführen
 
 		Histogram resultHistogram = new Histogram();
 
 
-
-
 		try {
 			// get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
+			// das wirft ja nix, wie damit umgehen? mit booleans?
 
-			// wtf warum muss das gecasted werden? Klasse und compute haben Histogram als Datentyp
+			//resultHistogram =  traverseTask.get();
+			resultHistogram = result.get();
 
-					// das wirft ja nix, wie damit umgehen? mit booleans?
-
-			resultHistogram =  traverseTask.get();
-			outputCallable.put(new Message(MessageType.FINISH));
 		} catch (InterruptedException e) {
 			//TODo
-			// outPutPool gleich schonmal zum shutdown auffordern, dass der nix neues mehr nimmt?
-			// und dann später normale beenden Prozedur?
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
-			//todo
-			// throwen oder null returnen? beides verhindert return eines histograms?
-			// gleiche Thematik beim MasterCallable
 			throw new HistogramServiceException("Execution has been interrupted.", e);
-		} finally {
+		}  catch (RuntimeException e) {
+		throw new HistogramServiceException("Execution has been interrupted.", e);
+	} finally {
 			// korrektes herunterfahren des masterServiceThreadpools so aus Übung kopiert
-			mainPool.shutdown();
+			mainPool.shutdownNow();
+			// hier denke ich am besten das outputRunnable beenden
+			try {
+				outputRunnable.put(new Message(MessageType.FINISH));
+			} catch (InterruptedException e) {
+				throw new HistogramServiceException("Execution has been interrupted.", e);
+			}
+			try {
+				// 500 ist schon sehr lange! und passt das System.err?
+				if (!mainPool.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+					System.err.println("Pool did not terminate");
+				}
+			} catch (InterruptedException ie) {
+				// Preserve interrupt status
+				Thread.currentThread().interrupt();
+			}
+
+
+			singleThrededPoolForOutput.shutdown();
 			try {
 				// Wait a while for existing tasks to terminate
-				if (!mainPool.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-					mainPool.shutdownNow(); // Cancel currently executing tasks
+				if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+					singleThrededPoolForOutput.shutdownNow(); // Cancel currently executing tasks
 					// Wait a while for tasks to respond to being cancelled
-					if (!mainPool.awaitTermination(60, TimeUnit.MILLISECONDS))
+					if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS))
 						System.err.println("Pool did not terminate");
 				}
 			} catch (InterruptedException ie) {
 				// (Re-)Cancel if current thread also interrupted
-				mainPool.shutdownNow();
+				singleThrededPoolForOutput.shutdownNow();
 				// Preserve interrupt status
 				Thread.currentThread().interrupt();
 			}
+
+
+
+
+
 		}
-
-
-		singleThrededPoolForOutput.shutdown();
-		try {
-			// Wait a while for existing tasks to terminate
-			if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS)) {
-				singleThrededPoolForOutput.shutdownNow(); // Cancel currently executing tasks
-				// Wait a while for tasks to respond to being cancelled
-				if (!singleThrededPoolForOutput.awaitTermination(60, TimeUnit.MILLISECONDS))
-					System.err.println("Pool did not terminate");
-			}
-		} catch (InterruptedException ie) {
-			// (Re-)Cancel if current thread also interrupted
-			singleThrededPoolForOutput.shutdownNow();
-			// Preserve interrupt status
-			Thread.currentThread().interrupt();
-		}
-
-
 		return resultHistogram;
-
-
-
 
 	}
 

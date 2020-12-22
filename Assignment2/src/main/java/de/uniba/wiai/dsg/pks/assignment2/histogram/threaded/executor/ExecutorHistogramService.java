@@ -55,6 +55,7 @@ public class ExecutorHistogramService implements HistogramService {
 		} finally {
 			masterExcecutor.shutdownNow();
 			try {
+				// 500 ist schon sehr lange! und passt das System.err?
 					if (!masterExcecutor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
 						System.err.println("Pool did not terminate");
 					}
