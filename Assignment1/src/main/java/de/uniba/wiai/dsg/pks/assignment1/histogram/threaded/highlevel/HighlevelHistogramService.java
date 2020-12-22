@@ -39,7 +39,7 @@ public class HighlevelHistogramService implements HistogramService {
 
 		ioExceptionThrown = false;
 		Histogram histogram = new Histogram();
-		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.HIGH_LEVEL, 0, this);
+		Thread masterThread = new MasterThread(rootDirectory, fileExtension, histogram, Service.HIGH_LEVEL, 0.3, this);
 
 		try{
 			masterThread.start();

@@ -15,6 +15,9 @@ import java.util.concurrent.*;
 
 public class ForkJoinHistogramService implements HistogramService {
 
+
+
+	private boolean ioExceptionThrown;
 	public ForkJoinHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
 		// but you can add code below
@@ -123,7 +126,8 @@ public class ForkJoinHistogramService implements HistogramService {
 
 	@Override
 	public void setIoExceptionThrown(boolean value) {
-
+		this.ioExceptionThrown = value;
+		// throw new UnsupportedOperationException();
 	}
 
 	@Override
