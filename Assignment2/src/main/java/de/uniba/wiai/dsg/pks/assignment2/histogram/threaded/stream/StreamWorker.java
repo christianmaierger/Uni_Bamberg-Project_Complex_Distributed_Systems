@@ -76,17 +76,6 @@ public class StreamWorker implements Callable<Histogram> {
         interrupted = true;
     }
 
-    private Histogram accumulateHistograms(Histogram a, Histogram b) {
-        checkForInterrupt();
-        Histogram result = new Histogram();
-        result.setDirectories(a.getDirectories() + b.getDirectories());
-        result.setFiles(a.getFiles() + b.getFiles());
-        result.setProcessedFiles(a.getProcessedFiles() + b.getProcessedFiles());
-        result.setLines(a.getLines() + b.getLines());
-        result.setDistribution(Utils.sumUpDistributions(a.getDistribution(), b.getDistribution()));
-        return result;
-    }
-
     private void checkForInterrupt() {
         if (interrupted) {
             shutDownPrinter();
@@ -194,7 +183,7 @@ public class StreamWorker implements Callable<Histogram> {
                     .parallel()
                     .filter(Files::isDirectory)
                     .map(this::processDirectory)
-                    .reduce(new Histogram(), this::accumulateHistograms);
+                    .reduce(new Histogram(), Utils::addUpAllFields);
         }
         return histogram;
     }

@@ -3,7 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceRunnable;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
@@ -23,14 +23,12 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     @GuardedBy(value ="itself")
     private final String fileExtension;
 
-   // private final Histogram localHistogram = new Histogram();
+    private final PrintService printService;
 
-    private final OutputServiceRunnable outputServiceRunnable;
-
-    public TraverseFolderCallable(String rootFolder, String fileExtension, OutputServiceRunnable outputCallable) {
+    public TraverseFolderCallable(String rootFolder, String fileExtension, PrintService printService) {
     this.rootFolder =rootFolder;
     this.fileExtension=fileExtension;
-    this.outputServiceRunnable = outputCallable;
+    this.printService = printService;
     }
 
 
@@ -88,12 +86,12 @@ public class TraverseFolderCallable implements Callable<Histogram> {
 
     private void logProcessedFile(String path) throws InterruptedException {
         Message message = new Message(MessageType.FILE, path);
-       outputServiceRunnable.put(message);
+       printService.put(message);
     }
 
     private void logProcessedDirectory(Histogram localHistogram) throws InterruptedException {
         Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
-        outputServiceRunnable.put(message);
+        printService.put(message);
     }
 
 

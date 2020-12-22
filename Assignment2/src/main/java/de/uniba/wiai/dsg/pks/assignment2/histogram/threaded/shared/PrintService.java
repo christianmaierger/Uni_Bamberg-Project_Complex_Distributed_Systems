@@ -21,22 +21,16 @@ import java.util.concurrent.BlockingQueue;
  */
 @NotThreadSafe
 public class PrintService implements Runnable{
-
+    private final int MESSAGE_CAPACITY = 500;
     private int lineNumber = 1;
-
-    @GuardedBy(value ="itself")
-    private final PrintService printService;
     @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;
 
 
 
     public PrintService(){
-        queue = new ArrayBlockingQueue<>(500, true);
-        this.printService = new PrintService();
+        queue = new ArrayBlockingQueue<>(MESSAGE_CAPACITY, true);
     }
-
-
 
     @Override
     public void run(){
@@ -47,9 +41,9 @@ public class PrintService implements Runnable{
                 if (MessageType.FINISH.equals(message.getType())) {
                     finished = true;
                 } else if(MessageType.FILE.equals(message.getType())){
-                    printService.logProcessedFile(message.getPath());
+                    logProcessedFile(message.getPath());
                 } else{
-                    printService.logProcessedDirectory(message.getPath(), message.getHistogram());
+                    logProcessedDirectory(message.getPath(), message.getHistogram());
                 }
             } catch (InterruptedException exception) {
                 finished = true;

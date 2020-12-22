@@ -3,7 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceRunnable;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
@@ -34,7 +34,7 @@ public class MasterCallable implements Callable<Histogram> {
 
     private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
     @GuardedBy(value ="itself")
-    private final OutputServiceRunnable outputRunnable;
+    private final PrintService printService;
 
 
 
@@ -42,7 +42,7 @@ public class MasterCallable implements Callable<Histogram> {
         this.executorService= masterExcecutor;
         this.rootFolder = rootFolder;
         this.fileExtension = fileExtension;
-        this.outputRunnable = new OutputServiceRunnable();
+        this.printService = new PrintService();
         this.outputPool = Executors.newSingleThreadExecutor();
 
     }
@@ -50,7 +50,7 @@ public class MasterCallable implements Callable<Histogram> {
     public Histogram call() throws InterruptedException, ExecutionException, IOException {
 
         Histogram resultHistogram = new Histogram();
-        outputPool.submit(outputRunnable);
+        outputPool.submit(printService);
 
       try {
         traverseDirectory(rootFolder);
@@ -59,7 +59,7 @@ public class MasterCallable implements Callable<Histogram> {
                 subResult = result.get();
                resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
             }
-          outputRunnable.put(new Message(MessageType.FINISH));
+          printService.put(new Message(MessageType.FINISH));
           return resultHistogram;
 
           // schöner collapsen oder?
@@ -106,7 +106,7 @@ public class MasterCallable implements Callable<Histogram> {
      * @throws InterruptedException if Thread is interrupted
      */
     private Future<Histogram> processFilesInFolder(String folder) {
-        TraverseFolderCallable folderTask = new TraverseFolderCallable(folder, fileExtension, outputRunnable);
+        TraverseFolderCallable folderTask = new TraverseFolderCallable(folder, fileExtension, printService);
         Future<Histogram> result = executorService.submit(folderTask);
         return result;
     }
@@ -121,7 +121,7 @@ public class MasterCallable implements Callable<Histogram> {
      */
     private void shutdownPrinter(ExecutorService executor) throws InterruptedException {
         executor.shutdown();
-        outputRunnable.put(new Message(MessageType.FINISH));
+        printService.put(new Message(MessageType.FINISH));
         try {
             // Wait a while for existing tasks to terminate
             if (!executor.awaitTermination(60, TimeUnit.MILLISECONDS)) {

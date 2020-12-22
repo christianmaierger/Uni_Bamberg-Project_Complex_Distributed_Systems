@@ -23,8 +23,7 @@ public class ExecutorHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		// TODO: Implement me
-		if(!Objects.nonNull(rootDirectory) || !Objects.nonNull(fileExtension)){
+		if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
 			throw new HistogramServiceException("Neither root directory nor file extension must be null.");
 		}
 		if(rootDirectory.isBlank() || fileExtension.isBlank()){
@@ -42,7 +41,7 @@ public class ExecutorHistogramService implements HistogramService {
 		MasterCallable masterCallable = new MasterCallable(masterExcecutor, rootDirectory, fileExtension);
 		Future<Histogram> result;
 		result = masterExcecutor.submit(masterCallable);
-		Histogram resultHistogram = new Histogram();
+		Histogram resultHistogram;
 
 		try {
 			resultHistogram = result.get();
@@ -50,17 +49,14 @@ public class ExecutorHistogramService implements HistogramService {
 		} catch (InterruptedException e) {
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} catch (ExecutionException e) {
-			//todo anderer print
-			throw new HistogramServiceException("Execution has been interrupted.", e);
+			throw new HistogramServiceException(e.getMessage(), e.getCause());
 		} finally {
 			masterExcecutor.shutdownNow();
 			try {
-				// 500 ist schon sehr lange! und passt das System.err?
 					if (!masterExcecutor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
-						System.err.println("Pool did not terminate");
+						System.err.println("Master Executor pool did not terminate");
 					}
 		} catch (InterruptedException ie) {
-				// Preserve interrupt status
 				Thread.currentThread().interrupt();
 			}
 		}

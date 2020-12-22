@@ -14,6 +14,8 @@ import java.util.concurrent.*;
 @ThreadSafe
 public class StreamHistogramService implements HistogramService {
 
+	//TODO: Printer sollte nach dem interrupt noch einige Nachrichten ausgeben?
+
 	public StreamHistogramService() {
 		// REQUIRED FOR GRADING - DO NOT REMOVE DEFAULT CONSTRUCTOR
 		// but you can add code below
