@@ -58,10 +58,10 @@ public class ForkJoinHistogramService implements HistogramService {
 		return resultHistogram;
 	}
 
-	private void shutDownPools(ForkJoinPool mainPool, PrintService outputRunnable, ExecutorService singleThreadedPoolForOutput) throws HistogramServiceException {
+	private void shutDownPools(ForkJoinPool mainPool, PrintService printService, ExecutorService singleThreadedPoolForOutput) throws HistogramServiceException {
 		try {
 			mainPool.shutdownNow();
-			outputRunnable.put(new Message(MessageType.FINISH));
+			printService.put(new Message(MessageType.FINISH));
 			if (!mainPool.awaitTermination(500, TimeUnit.MILLISECONDS)) {
 				System.err.println("Main pool did not terminate");
 			}
