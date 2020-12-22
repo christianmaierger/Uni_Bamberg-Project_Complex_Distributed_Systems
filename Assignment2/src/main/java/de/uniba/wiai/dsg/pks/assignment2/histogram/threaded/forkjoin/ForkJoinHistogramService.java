@@ -3,8 +3,9 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.forkjoin;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor.MasterCallable;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceRunnable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,21 +41,17 @@ public class ForkJoinHistogramService implements HistogramService {
 
 		// neuen ForkJoin Pool anlegen
 		ForkJoinPool mainPool = new ForkJoinPool();
-
-
-
-
-
+		
 
 		// output dann als recursive task oder?
-		OutputServiceCallable outputCallable = new OutputServiceCallable();
+		OutputServiceRunnable outputCallable = new OutputServiceRunnable();
 		ExecutorService singleThrededPoolForOutput = Executors.newSingleThreadExecutor();
 		singleThrededPoolForOutput.submit(outputCallable);
 
 
 
         // task anlegen, gibt wohl nur eine
-		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, outputCallable);
+		TraverseTask traverseTask = new TraverseTask(rootDirectory, fileExtension, outputCallable, singleThrededPoolForOutput, mainPool);
 
 
 		mainPool.execute(traverseTask); // RootTask asynchron ausführen
@@ -71,7 +68,8 @@ public class ForkJoinHistogramService implements HistogramService {
 
 					// das wirft ja nix, wie damit umgehen? mit booleans?
 
-			resultHistogram = (Histogram) traverseTask.get();
+			resultHistogram =  traverseTask.get();
+			outputCallable.put(new Message(MessageType.FINISH));
 		} catch (InterruptedException e) {
 			//TODo
 			// outPutPool gleich schonmal zum shutdown auffordern, dass der nix neues mehr nimmt?

@@ -72,10 +72,6 @@ public class Histogram implements Serializable {
 		this.processedFiles = processedFiles;
 	}
 
-
-
-
-
 	@Override
 	public int hashCode() {
 		final int prime = 31;

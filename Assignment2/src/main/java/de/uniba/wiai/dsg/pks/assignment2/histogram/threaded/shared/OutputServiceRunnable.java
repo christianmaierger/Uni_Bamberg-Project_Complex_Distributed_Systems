@@ -1,9 +1,12 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared;
 
 
+import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.NotThreadSafe;
 
+import java.util.Arrays;
+import java.util.Formatter;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -17,18 +20,16 @@ import java.util.concurrent.BlockingQueue;
  * of the constructor. It is not threadsafe and only one instance should be used at a time.
  */
 @NotThreadSafe
-public class OutputServiceCallable implements Runnable{
+public class OutputServiceRunnable implements Runnable{
+    private int lineNumber = 1;
 
-    @GuardedBy(value ="itself")
-    private final OutputService outputService;
     @GuardedBy(value = "itself")
     private final BlockingQueue<Message> queue;
 
 
 
-    public OutputServiceCallable(){
+    public OutputServiceRunnable(){
        queue = new ArrayBlockingQueue<>(500, true);
-        this.outputService = new OutputService();
     }
 
 
@@ -42,14 +43,46 @@ public class OutputServiceCallable implements Runnable{
                 if (MessageType.FINISH.equals(message.getType())) {
                     finished = true;
                 } else if(MessageType.FILE.equals(message.getType())){
-                    outputService.logProcessedFile(message.getPath());
+                    this.logProcessedFile(message.getPath());
                 } else{
-                    outputService.logProcessedDirectory(message.getPath(), message.getHistogram());
+                   this.logProcessedDirectory(message.getPath(), message.getHistogram());
                 }
             } catch (InterruptedException exception) {
                 finished = true;
             }
         }
+    }
+
+    /**
+     * Prints a message to console that tells the user that "directoryPath" has been finished and also outputs the
+     * intermediary result of the histogram.
+     * @param directoryPath path of the directory that has been processed
+     */
+    public void logProcessedDirectory(String directoryPath, Histogram histogram){
+        StringBuilder stringBuilder = new StringBuilder();
+        Formatter formatter = new Formatter(stringBuilder);
+        formatter.format("N: %d - ", lineNumber);
+        formatter.format("Directory %s finished ", directoryPath);
+        formatter.format("[distr = %s, ", Arrays.toString(histogram.getDistribution()));
+        formatter.format("lines=%d, ", histogram.getLines());
+        formatter.format("files=%d, ", histogram.getFiles());
+        formatter.format("processedFiles=%d, ", histogram.getProcessedFiles());
+        formatter.format("directories=%d]", histogram.getDirectories());
+        System.out.println(stringBuilder);
+        lineNumber++;
+    }
+
+    /**
+     * Prints a message to console that tells the user that "filePath" has been finished.
+     * @param filePath path of the file that has been finished
+     */
+    public void logProcessedFile(String filePath){
+        StringBuilder stringBuilder = new StringBuilder();
+        Formatter formatter = new Formatter(stringBuilder);
+        formatter.format("N: %d - ", lineNumber);
+        formatter.format("File %s finished !", filePath);
+        System.out.println(stringBuilder);
+        lineNumber++;
     }
 
     /**

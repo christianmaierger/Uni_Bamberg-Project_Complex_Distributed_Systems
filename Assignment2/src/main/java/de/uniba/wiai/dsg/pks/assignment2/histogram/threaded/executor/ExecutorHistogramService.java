@@ -3,8 +3,6 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
-import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
 import java.nio.file.Files;
@@ -40,29 +38,13 @@ public class ExecutorHistogramService implements HistogramService {
 			throw new HistogramServiceException("Root directory must be a directory");
 		}
 
-
-
-		// neuen ThreadPool erzeugen und callable wohl master starten, das dann alles handelt und callables für Verzeichnisse startet
 		ExecutorService masterExcecutor = Executors.newCachedThreadPool();
-
-
-
-
 		MasterCallable masterCallable = new MasterCallable(masterExcecutor, rootDirectory, fileExtension);
 		Future<Histogram> result;
 		result = masterExcecutor.submit(masterCallable);
-
-
-		// auf wert aus master callable warten und dann shutdown denk ich mal!
-		// das get hier blockiert ja dann erst
-	// try catch aus übung um schön das Zeug was get werfen kann abzufangen
-
 		Histogram resultHistogram = new Histogram();
-		// was amchen bei IO Exeption?
-
 
 		try {
-			// get blockiert immer außerhalb von ForkJoinTasks, eben bis erg in future fertig ist
 			resultHistogram = result.get();
 
 		} catch (InterruptedException e) {
@@ -71,7 +53,6 @@ public class ExecutorHistogramService implements HistogramService {
 			//todo anderer print
 			throw new HistogramServiceException("Execution has been interrupted.", e);
 		} finally {
-			// korrektes herunterfahren mit direktem Abbruch der Verarbeitung
 			masterExcecutor.shutdownNow();
 			try {
 					if (!masterExcecutor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
@@ -82,11 +63,6 @@ public class ExecutorHistogramService implements HistogramService {
 				Thread.currentThread().interrupt();
 			}
 		}
-
-
-
-
-
 		return resultHistogram;
 	}
 

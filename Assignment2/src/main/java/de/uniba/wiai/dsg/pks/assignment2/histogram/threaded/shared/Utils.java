@@ -83,8 +83,16 @@ public class Utils {
         return result;
     }
 
-    public static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
 
+    /**
+     * Just adds up all fields of two histograms and returns a new histogram with their values from all fields added
+     * together.
+     * *
+     * @param subResultHistogram a new result as histogram which fields should be added on the fields of a given histogram
+     * @param oldHistogram the histogram to which the method should add to
+     * @return
+     */
+    public static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
 
         long[] oldHistogramDistribution= oldHistogram.getDistribution();
         long[] newHistogramDistribution= subResultHistogram.getDistribution();
@@ -96,7 +104,6 @@ public class Utils {
         Histogram result = new Histogram();
 
         result.setDistribution(oldHistogramDistribution);
-
         result.setFiles(oldHistogram.getFiles() + subResultHistogram.getFiles());
         result.setProcessedFiles(oldHistogram.getProcessedFiles() + subResultHistogram.getProcessedFiles());
         result.setDirectories(oldHistogram.getDirectories() + subResultHistogram.getDirectories());

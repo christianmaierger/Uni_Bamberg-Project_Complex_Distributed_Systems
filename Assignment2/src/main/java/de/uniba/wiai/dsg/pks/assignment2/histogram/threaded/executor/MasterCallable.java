@@ -3,7 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceCallable;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceRunnable;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
@@ -30,15 +30,11 @@ public class MasterCallable implements Callable<Histogram> {
     private final String rootFolder;
     @GuardedBy(value ="itself")
     private final String fileExtension;
-    // liste wird ja nur von diesem thread verwendet? ok? besser concurrent Struktur?
-    // oder gleich blockingqueue verwenden?
+
 
     private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
     @GuardedBy(value ="itself")
-    private final OutputServiceCallable outputCallable;
-
-
-
+    private final OutputServiceRunnable outputCallable;
 
 
 
@@ -46,30 +42,27 @@ public class MasterCallable implements Callable<Histogram> {
         this.executorService= masterExcecutor;
         this.rootFolder = rootFolder;
         this.fileExtension = fileExtension;
-        this.outputCallable = new OutputServiceCallable();
+        this.outputCallable = new OutputServiceRunnable();
         this.outputPool = Executors.newSingleThreadExecutor();
 
     }
 
     public Histogram call() throws InterruptedException, ExecutionException, IOException {
-        //TODO: Suchbereich weiter zerlegen ODER Berechnung durchfuehren
+
         Histogram resultHistogram = new Histogram();
-
-      outputPool.submit(outputCallable);
-
+        outputPool.submit(outputCallable);
 
       try {
         traverseDirectory(rootFolder);
-
-
         for (Future<Histogram> result: listOfFuturesRepresentingEachFolder) {
-
                 Histogram subResult;
                 subResult = result.get();
                resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
             }
           outputCallable.put(new Message(MessageType.FINISH));
           return resultHistogram;
+
+          // schöner collapsen oder?
       } catch (InterruptedException e) {
           shutdownPrinter(outputPool);
           throw e;
@@ -80,11 +73,15 @@ public class MasterCallable implements Callable<Histogram> {
           shutdownPrinter(outputPool);
           throw e;
       }
-
-
-
     }
 
+    /**
+     * Scans through the root folder and looks for directories. After the root folder has been fully scanned,
+     * the files in it are processed.
+     * @param currentFolder folder to scan through
+     * @throws IOException if I/O error occurred during processing of the folder
+     * @throws InterruptedException if Thread is interrupted
+     */
     private void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
         Path folder = Paths.get(currentFolder);
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
@@ -102,15 +99,26 @@ public class MasterCallable implements Callable<Histogram> {
         listOfFuturesRepresentingEachFolder.add(result);
     }
 
-    private Future<Histogram> processFilesInFolder(String folder) {
 
+    /**
+     * Starts a Worker to process the files in a given root folder.
+     * @param folder folder to process
+     * @throws InterruptedException if Thread is interrupted
+     */
+    private Future<Histogram> processFilesInFolder(String folder) {
         TraverseFolderCallable folderTask = new TraverseFolderCallable(folder, fileExtension, outputCallable);
         Future<Histogram> result = executorService.submit(folderTask);
-
         return result;
     }
 
 
+    /**
+     * If during execution any exeption ooccures, may it be by interupption or otherwise, this method is called to ensure
+     * an orderly shutdown of the OutputServiceRUnnable by sending it a termination message and shutting down the pool
+     * in which it is executed according to Java API.
+     * @param executor the Threadpool to shutdown
+     * @throws InterruptedException if Thread is interrupted
+     */
     private void shutdownPrinter(ExecutorService executor) throws InterruptedException {
         executor.shutdown();
         outputCallable.put(new Message(MessageType.FINISH));
