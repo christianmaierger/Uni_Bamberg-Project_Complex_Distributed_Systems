@@ -1,10 +1,14 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.forkjoin;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.OutputServiceRunnable;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
+import net.jcip.annotations.GuardedBy;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,28 +19,26 @@ import java.util.concurrent.*;
 
 public class TraverseTask extends RecursiveTask<Histogram> {
 
-    private final ForkJoinPool forkJoinPool;
-    private final PrintService output;
+    @GuardedBy(value ="itself")
     private final String rootFolder;
+    @GuardedBy(value ="itself")
     private final String fileExtension;
+    private final OutputServiceRunnable outputServiceRunnable;
+    private final ExecutorService outputPool;
+    private final ForkJoinPool mainPool;
+    private volatile boolean interrupted = false;
 
-    private final List<Future<Histogram>> tasks;
+    List<ForkJoinTask<Histogram>> tasksRepresentingEachFolder = new LinkedList<ForkJoinTask<Histogram>>();
 
-    public TraverseTask(ForkJoinPool forkJoinPool, String rootFolder, String fileExtension) {
-        this.forkJoinPool = forkJoinPool;
-        this.rootFolder = rootFolder;
-        this.fileExtension = fileExtension;
-        this.output = new PrintService();
-        this.tasks = new LinkedList<>();
+
+    public TraverseTask(String rootFolder, String fileExtension, OutputServiceRunnable outputCallable, ExecutorService outputPool, ForkJoinPool mainPool) {
+        this.rootFolder =rootFolder;
+        this.fileExtension=fileExtension;
+        this.outputServiceRunnable = outputCallable;
+        this.outputPool = outputPool;
+        this.mainPool = mainPool;
     }
 
-    public TraverseTask(List<Future<Histogram>> tasks) {
-        this.forkJoinPool = null;
-        this.rootFolder = null;
-        this.fileExtension = null;
-        this.output = new PrintService();
-        this.tasks = tasks;
-    }
 
     @Override
     protected Histogram compute() {
@@ -44,50 +46,182 @@ public class TraverseTask extends RecursiveTask<Histogram> {
         Histogram resultHistogram = new Histogram();
 
         try {
+            //zerteilen
             traverseDirectory(rootFolder);
 
-            if (tasks.size() > 1) {
-                TraverseTask left = new TraverseTask(tasks.subList(0, tasks.size() / 2));
-                TraverseTask right = new TraverseTask(tasks.subList(tasks.size() / 2 + 1, tasks.size() - 1));
-                left.fork();
-                right.fork();
-                resultHistogram = Utils.addUpAllFields(left.compute(), right.compute());
-            } else {
-                resultHistogram = Utils.addUpAllFields(tasks.get(0).get(), new Histogram());
-            }
-            return resultHistogram;
-        } catch (IOException | InterruptedException | ExecutionException e) {
 
-        }
+            if(tasksRepresentingEachFolder.size()>0) {
 
-        return null;
+                for (ForkJoinTask<Histogram> result : tasksRepresentingEachFolder) {
 
-    }
-
-    private void traverseDirectory(String directory) throws IOException {
-        Path folder = Paths.get(directory);
-        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
-            for(Path path : stream) {
-                if(Thread.currentThread().isInterrupted()) {
-
+                    checkForInterrupt();
+                    Histogram subResult;
+                    subResult = result.join();
+                    resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
                 }
-                //TraverseTask traverseTask = new TraverseTask(forkJoinPool, folder, fileExtension);
-                //Directory -> new TraverseTask, der guckt alle an und sucht neue dirs
+
+
+            }
+                //if file task berechnen:
+
+                Histogram localHistogram = new Histogram();
+
+                processFiles(localHistogram);
+                localHistogram.setDirectories(1);
+                logProcessedDirectory(localHistogram);
+
+                // aggregieren
+                return resultHistogram = Utils.addUpAllFields(resultHistogram, localHistogram);
+
+
+        } catch (InterruptedException e) {
+            try {
+                shutdownPrinter(outputPool);
+                RuntimeException ex = new RuntimeException();
+                throw ex;
+
+            } catch (InterruptedException interruptedException) {
+              //  interruptedException.printStackTrace();
+            }
+        } catch (RuntimeException e) {
+            try {
+                shutdownPrinter(outputPool);
+                throw e;
+            } catch (InterruptedException interruptedException) {
+                //interruptedException.printStackTrace();
+                throw e;
+            }
+        } catch (IOException e) {
+            try {
+                shutdownPrinter(outputPool);
+                throw e;
+            } catch (InterruptedException | IOException interruptedException) {
+               // interruptedException.printStackTrace();
+                try {
+                    throw e;
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
+                }
             }
         }
-        //files angucken --> processFiles
-        Future<Histogram> result = processFilesInFolder(directory);
-        tasks.add(result);
-    }
 
-    private Future<Histogram> processFilesInFolder(String folder) {
-        TraverseTask traverseTask = new TraverseTask(forkJoinPool, folder, fileExtension);
-        Future<Histogram> result = forkJoinPool.submit(traverseTask);
-        return result;
 
-    }
-
-    //processFiles
-    //Files abarbeiten und loggen
-    //Directory fertig loggen
+    return resultHistogram;
 }
+
+
+
+
+    private void traverseDirectory(String currentFolder) throws IOException, InterruptedException {
+        checkForInterrupt();
+
+        Path folder = Paths.get(currentFolder);
+        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
+            for(Path path: stream){
+                if(Thread.currentThread().isInterrupted()){
+                    shutdownPrinter(outputPool);
+                    throw new InterruptedIOException();
+                }
+                if (Files.isDirectory(path)){
+                  //  traverseDirectory(path.toString());
+                    ForkJoinTask<Histogram> result = processFilesInFolder(path.toString());
+                    tasksRepresentingEachFolder.add(result);
+                }
+            }
+        }
+    }
+
+    private ForkJoinTask<Histogram> processFilesInFolder(String folder) {
+
+        TraverseTask folderTask = new TraverseTask(folder, fileExtension, outputServiceRunnable, outputPool, mainPool);
+        ForkJoinTask<Histogram> result = folderTask.fork();
+
+        return result;
+    }
+
+
+    private void shutdownPrinter(ExecutorService executor) throws InterruptedException {
+        executor.shutdown();
+        outputServiceRunnable.put(new Message(MessageType.FINISH));
+        try {
+            // Wait a while for existing tasks to terminate
+            if (!executor.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow(); // Cancel currently executing tasks
+                // Wait a while for tasks to respond to being cancelled
+                if (!executor.awaitTermination(60, TimeUnit.MILLISECONDS))
+                    System.err.println("Pool did not terminate");
+            }
+        } catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void checkForInterrupt() {
+        if (interrupted) {
+            try {
+                shutdownPrinter(outputPool);
+                throw new RuntimeException("Execution has been interrupted.");
+            } catch (InterruptedException e) {
+                // interruptedException.printStackTrace();
+                throw new RuntimeException("Execution has been interrupted.");
+            }
+
+        }
+    }
+
+
+    private void processFiles(de.uniba.wiai.dsg.pks.assignment.model.Histogram localHistogram) throws IOException, InterruptedException {
+
+        Path folder = Paths.get(rootFolder);
+        try(DirectoryStream<Path> stream = Files.newDirectoryStream(folder)){
+            for(Path path: stream){
+                if (Files.isRegularFile(path)){
+                    localHistogram.setFiles(localHistogram.getFiles() + 1);
+                    boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
+                    if (fileExtensionCorrect){
+
+                        processFileContent(path, localHistogram);
+                        logProcessedFile(path.toString());
+                        localHistogram.setProcessedFiles(localHistogram.getProcessedFiles() + 1);
+                    }
+                }
+            }
+
+        }
+    }
+
+    private void processFileContent(Path path, de.uniba.wiai.dsg.pks.assignment.model.Histogram localHistogram){
+
+
+        localHistogram.setLines(Utils.getLinesPerFile(path));
+
+        List<String> lines = Utils.getFileAsLines(path);
+
+        long[] distribution = Utils.countLetters(lines);
+
+        localHistogram.setDistribution(Utils.sumUpDistributions(distribution, localHistogram.getDistribution()));
+
+    }
+
+
+
+    private void logProcessedFile(String path) throws InterruptedException {
+        Message message = new Message(MessageType.FILE, path);
+        outputServiceRunnable.put(message);
+    }
+
+    private void logProcessedDirectory(de.uniba.wiai.dsg.pks.assignment.model.Histogram localHistogram) throws InterruptedException {
+        Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
+        outputServiceRunnable.put(message);
+    }
+
+
+}
+
+
+
+
+
