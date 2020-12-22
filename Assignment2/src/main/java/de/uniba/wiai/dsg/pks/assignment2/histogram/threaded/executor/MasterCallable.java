@@ -32,6 +32,13 @@ public class MasterCallable implements Callable<Histogram> {
     private final List<Future<Histogram>> listOfFuturesRepresentingEachFolder = new LinkedList<>();
     private final PrintService printService;
 
+    /**
+     * Creates a MasterCallable which can be used to perform a frequency analysis on all the files in one
+     * folder with a specific file extension.
+     * @param masterExecutor Thread Pool in which the MasterCallable is run
+     * @param rootFolder folder to search
+     * @param fileExtension file extension to look for
+     */
     public MasterCallable(ExecutorService masterExecutor, String rootFolder, String fileExtension) {
         this.executorService = masterExecutor;
         this.rootFolder = rootFolder;
@@ -40,6 +47,15 @@ public class MasterCallable implements Callable<Histogram> {
         this.outputPool = Executors.newSingleThreadExecutor();
     }
 
+    /**
+     * Analyses the rootDirectory of this MasterCallable and returns the result of the analysis as a Histogram.
+     * Furthermore, messages to indicate that a file or folder has been processed are printed to console.
+     *
+     * @return Histogram representing the result of the analysis of this.rootDirectory
+     * @throws IOException if an I/O error occurs
+     * @throws InterruptedException if the this Thread is interrupted
+     * @throws ExecutionException if any other exception occurs within the calculations of subclasses
+     */
     public Histogram call() throws InterruptedException, ExecutionException, IOException {
         Histogram resultHistogram = new Histogram();
         outputPool.submit(printService);
@@ -90,7 +106,7 @@ public class MasterCallable implements Callable<Histogram> {
      * Starts a Worker to process the files in a given root folder.
      *
      * @param folder folder to process
-     * @throws InterruptedException if Thread is interrupted
+     * @return a Future of the resulting Histogram
      */
     private Future<Histogram> processFilesInFolder(String folder) {
         TraverseFolderCallable folderTask = new TraverseFolderCallable(folder, fileExtension, printService);
@@ -100,11 +116,10 @@ public class MasterCallable implements Callable<Histogram> {
 
 
     /**
-     * If during execution any exeption ooccures, may it be by interupption or otherwise, this method is called to ensure
-     * an orderly shutdown of the OutputServiceRUnnable by sending it a termination message and shutting down the pool
-     * in which it is executed according to Java API.
+     * This method is called to ensure an orderly shutdown of the PrintService by sending it a termination message
+     * and shutting down the pool in which it is executed according to Java API.
      *
-     * @param executor the Threadpool to shutdown
+     * @param executor the Thread Pool to shutdown
      * @throws InterruptedException if Thread is interrupted
      */
     private void shutdownPrinter(ExecutorService executor) throws InterruptedException {

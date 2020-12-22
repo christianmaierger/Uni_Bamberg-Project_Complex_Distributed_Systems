@@ -49,7 +49,7 @@ public class Utils {
      * with 26 fields. The first field holds the number of 'A'/'a' characters in the file, the second field the
      * number of 'B'/'b' characters and so on.
      * @param file List<String> file to count the letters of
-     * @return
+     * @return long[] representing the respective occurrence of latin characters
      */
     public static long[] countLetters(List<String> file){
         long[] distribution = new long[26];
@@ -73,7 +73,7 @@ public class Utils {
      *
      * @param distributionA first long[] distribution of size 26
      * @param distributionB second long[] distribution of size 26
-     * @return
+     * @return long[] array that holds the field-wise addition of the two input arrays
      */
     public static long[] sumUpDistributions(long[] distributionA, long[] distributionB){
         long[] result = new long[Histogram.ALPHABET_SIZE];
@@ -88,9 +88,9 @@ public class Utils {
      * Adds up all fields of two histograms and returns a new histogram with their values from all fields added
      * together.
      *
-     * @param subResultHistogram a new result as histogram which fields should be added on the fields of a given histogram
+     * @param subResultHistogram a new result as histogram of which the fields should be added on the fields of a given histogram
      * @param oldHistogram the histogram to which the method should add to
-     * @return
+     * @return a Histogrom holding the addition of the two input Histograms
      */
     public static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
 

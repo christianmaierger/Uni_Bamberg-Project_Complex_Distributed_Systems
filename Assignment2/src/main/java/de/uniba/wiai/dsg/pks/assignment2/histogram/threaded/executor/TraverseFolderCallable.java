@@ -23,15 +23,30 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     private final String rootFolder;
     @GuardedBy(value = "itself")
     private final String fileExtension;
-
     private final PrintService printService;
 
+    /**
+     * Creates a TraverseFolderCallable which analyses the files in one specific folder without its subfolders.
+     * It only looks at files of a specified file extension. Files that have been processed are logged to console.
+     *
+     * @param rootFolder folder to search
+     * @param fileExtension type of file to look at
+     * @param printService which shall take care of the logs to console
+     */
     public TraverseFolderCallable(String rootFolder, String fileExtension, PrintService printService) {
         this.rootFolder = rootFolder;
         this.fileExtension = fileExtension;
         this.printService = printService;
     }
 
+    /**
+     * Performs a frequency analysis as statistical metrics on the files of type this.fileExtension in this.rootFolder and
+     * returns its analysis as a Histogram. Processed files are logged to console.
+     *
+     * @return Histogram holding the result of the analysis
+     * @throws InterruptedException if the current Thread is interrupted
+     * @throws IOException if an I/O error occurs
+     */
     public Histogram call() throws InterruptedException, IOException {
         Histogram localHistogram = new Histogram();
         processFiles(localHistogram);
@@ -40,12 +55,11 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         return localHistogram;
     }
 
-
     /**
-     * Scans through the root folder and looks for files. Each file found while iterating is then processed and snet as
-     * massage to the OutputRunnable to be printed.
+     * Scans through the root folder and looks for files. Each file found while iterating is then processed and send as
+     * Message to the PrintService to be printed.
      *
-     * @param localHistogram the histogram for one folder that the callble was created for and that is processed here
+     * @param localHistogram the histogram for one folder that the Callable was created for and that is processed here
      * @throws IOException          if I/O error occurred during processing of the folder and its files
      * @throws InterruptedException if Thread is interrupted
      */
@@ -70,11 +84,10 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     }
 
     /**
-     * Scans trough the lines of a file counting them and calculates the distribution by calling helping methods
-     * froms Utils class
+     * Scans through the lines of a file counting them and calculates the distribution of latin alphabet letters.
      *
      * @param path           the path of a file to be processes
-     * @param localHistogram the localHistagram for one folder for which the results are added up
+     * @param localHistogram the local Histogram for one folder for which the results are added up
      *                       for all files in that folder
      */
     private void processFileContent(Path path, Histogram localHistogram) {

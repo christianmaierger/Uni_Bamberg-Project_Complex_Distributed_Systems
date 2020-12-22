@@ -49,7 +49,7 @@ public class StreamWorker implements Callable<Histogram> {
 
     /**
      * Analyses the rootDirectory of this.StreamWorker and returns the result of the analysis as a Histogram.
-     * Furthermore, messages to indicate that a files or folder has been processed are printed to console.
+     * Furthermore, messages to indicate that a file or folder has been processed are printed to console.
      *
      * @return Histogram representing the result of the analysis of this.rootDirectory
      * @throws IOException if an I/O error occurs
