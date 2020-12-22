@@ -126,18 +126,11 @@ public class ForkJoinHistogramService implements HistogramService {
 
 	@Override
 	public void setIoExceptionThrown(boolean value) {
-		this.ioExceptionThrown = value;
-		// throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public String toString() {
 		return "ForkJoinHistogramService";
-	}
-
-	@Override
-	public void setIoExceptionThrown(boolean value) {
-		// TODO: Was soll hiermit passieren? Methode hatten wir für Ass1 im Interface gebraucht...
-		throw new UnsupportedOperationException();
 	}
 }

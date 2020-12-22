@@ -4,6 +4,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class StreamWorker implements Callable<Histogram> {
         result.setFiles(a.getFiles() + b.getFiles());
         result.setProcessedFiles(a.getProcessedFiles() + b.getProcessedFiles());
         result.setLines(a.getLines() + b.getLines());
-        result.setDistribution(FileUtils.sumUpDistributions(a.getDistribution(), b.getDistribution()));
+        result.setDistribution(Utils.sumUpDistributions(a.getDistribution(), b.getDistribution()));
         return result;
     }
 
@@ -119,9 +120,9 @@ public class StreamWorker implements Callable<Histogram> {
             return (streamOfPaths
                     .parallel()
                     .filter(correctFileExtension)
-                    .map(FileUtils::getFileAsLines)
-                    .map(FileUtils::countLetters)
-                    .reduce(new long[Histogram.ALPHABET_SIZE], FileUtils::sumUpDistributions));
+                    .map(Utils::getFileAsLines)
+                    .map(Utils::countLetters)
+                    .reduce(new long[Histogram.ALPHABET_SIZE], Utils::sumUpDistributions));
         }
     }
 
@@ -131,7 +132,7 @@ public class StreamWorker implements Callable<Histogram> {
             return (streamOfPaths
                     .parallel()
                     .filter(correctFileExtension)
-                    .map(FileUtils::getLinesPerFile)
+                    .map(Utils::getLinesPerFile)
                     .mapToLong(Long::longValue)
                     .sum());
         }

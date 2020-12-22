@@ -57,11 +57,6 @@ public class StreamHistogramService implements HistogramService {
 	}
 
 	@Override
-	public void setIoExceptionThrown(boolean value) {
-
-	}
-
-	@Override
 	public String toString() {
 		return "StreamHistogramService";
 	}
