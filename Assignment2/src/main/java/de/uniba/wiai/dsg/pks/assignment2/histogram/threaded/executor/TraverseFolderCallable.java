@@ -69,7 +69,7 @@ public class TraverseFolderCallable implements Callable<Histogram> {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
                     if(Thread.currentThread().isInterrupted()){
-                        throw new InterruptedIOException("Execution has been interrupted.");
+                        throw new InterruptedException("Execution has been interrupted.");
                     }
                     localHistogram.setFiles(localHistogram.getFiles() + 1);
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
