@@ -1,9 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.stream;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.Message;
-import de.uniba.wiai.dsg.pks.assignment1.histogram.threaded.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.PrintService;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
