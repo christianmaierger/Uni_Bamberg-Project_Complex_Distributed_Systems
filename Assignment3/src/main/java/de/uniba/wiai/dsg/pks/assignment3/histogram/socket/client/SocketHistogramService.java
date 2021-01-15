@@ -22,4 +22,13 @@ public class SocketHistogramService implements HistogramService {
 		return "SocketHistogramService";
 	}
 
+
+	/**
+	 * Unneeded legacy method from Assignment 1.
+	 */
+	@Override
+	public void setIoExceptionThrown(boolean value){
+		throw new UnsupportedOperationException();
+	}
+
 }
