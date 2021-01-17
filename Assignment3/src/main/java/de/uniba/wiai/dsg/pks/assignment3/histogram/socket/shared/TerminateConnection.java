@@ -1,7 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
-public class TerminateConnection {
+import java.io.Serializable;
 
+public class TerminateConnection implements Serializable {
 	// TODO: implement immutable message class
+
 
 }
