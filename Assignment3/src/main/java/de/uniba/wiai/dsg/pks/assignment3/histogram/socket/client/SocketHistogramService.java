@@ -76,7 +76,7 @@ public class SocketHistogramService implements HistogramService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
+	// histogram exeption?
 		throw new UnsupportedOperationException("Implement here");
 	}
 

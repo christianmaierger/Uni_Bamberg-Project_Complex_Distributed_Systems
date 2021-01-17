@@ -5,7 +5,12 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
+import java.net.Socket;
+
 public class TCPClientHandler implements ClientHandler {
+
+	public TCPClientHandler(Socket client) {
+	}
 
 	@Override
 	public void run() {
