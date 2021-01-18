@@ -6,6 +6,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -39,6 +40,8 @@ public class SocketHistogramService implements HistogramService {
 
 			SocketAddress serverAddress = new InetSocketAddress(
 					hostname, port);
+
+			System.out.println("New Client tries to connect to " + hostname + ":" + port);
 			server.connect(serverAddress);
 
 			try(ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
@@ -46,10 +49,35 @@ public class SocketHistogramService implements HistogramService {
 
 				traverseDirectory(rootDirectory, out);
 
-				//jetzt sollte alles beim Server in Verarbeitung sein, wir können langsam nachfragen
+				//jetzt sollte alles beim Server in Verarbeitung sein, wir können langsam nachfragen, zur Sicherheit
+				//erstmal ein Schläfchen
 				Thread.currentThread().sleep(1000);
+				System.out.println("Client is sending GetResult...");
 				GetResult get = new GetResult();
 				out.writeObject(get);
+				out.flush();
+
+
+				try(ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
+					System.out.println("Client is reading ReturnResult...");
+					Object object = in.readObject();
+					System.out.println("As the Client got Result from Server, Connection is now terminated...");
+					TerminateConnection poisonPill = new TerminateConnection();
+					out.writeObject(poisonPill);
+					if(object instanceof ReturnResult) {
+						resultMessage = (ReturnResult) object;
+						if(resultMessage.getException()!=null) {
+							// hier überlegen ob man das einfach wirft, wrapped etc die e vom server
+							System.out.println("ReturnResult contained an Exeption, Server was terminated...");
+							throw resultMessage.getException();
+						}
+						System.out.println("ReturnResult contained an Histogram, which is returned...");
+						return resultMessage.getHistogram();
+					}
+				} catch (Exception e) {
+					// provisorisch fange ich hier die e vom Server
+					e.printStackTrace();
+				}
 
 
 			} catch (InterruptedException e) {
@@ -57,21 +85,7 @@ public class SocketHistogramService implements HistogramService {
 			}
 
 
-			try(ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
 
-				Object object = in.readObject();
-				if(object instanceof ReturnResult) {
-					resultMessage = (ReturnResult) object;
-					if(resultMessage.getException()!=null) {
-						// hier überlegen ob man das einfach wirft, wrapped etc die e vom server
-						throw resultMessage.getException();
-					}
-					return resultMessage.getHistogram();
-				}
-			} catch (Exception e) {
-				// provisorisch fange ich hier die e vom Server
-				e.printStackTrace();
-			}
 
 		} catch (IOException e) {
 			e.printStackTrace();

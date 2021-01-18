@@ -10,6 +10,8 @@ public class ServerMain {
 		server.start(1337);
 		System.out.println("Server started. Press enter to terminate.");
 
+		server.run();
+
 		System.in.read();
 
 		server.shutdown();

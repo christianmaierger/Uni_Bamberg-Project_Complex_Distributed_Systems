@@ -6,8 +6,10 @@ import java.io.Serializable;
 
 public class ReturnResult implements Serializable {
     // TODO: implement immutable message class
-   final Histogram resultHistogram;
-   final Exception e;
+    private static final long serialVersionUID = 2L;
+
+   private final Histogram resultHistogram;
+   private final Exception e;
 
     public ReturnResult(Histogram resultHistogram) {
         this.resultHistogram = resultHistogram;

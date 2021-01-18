@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 public class ParseDirectory implements Serializable {
 	// TODO: implement immutable message class
+    private static final long serialVersionUID = 2L;
+
     private final String path;
 
     public ParseDirectory(String path) {
