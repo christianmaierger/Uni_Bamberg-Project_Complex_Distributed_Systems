@@ -23,6 +23,23 @@ public class TCPDirectoryServer implements DirectoryServer {
 	private ServerSocket serverSocket=null;
 	private ExecutorService service;
 
+
+	public List<TCPClientHandler> getHandlerList() {
+		return handlerList;
+	}
+
+	public ConcurrentHashMap<ParseDirectory, Histogram> getDirectoryHistogramHashMap() {
+		return directoryHistogramHashMap;
+	}
+
+	public ServerSocket getServerSocket() {
+		return serverSocket;
+	}
+
+	public ExecutorService getService() {
+		return service;
+	}
+
 	@Override
 	public void start(int port) throws DirectoryServerException {
 		// TODO: implement me
@@ -63,6 +80,8 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 	}
 
+
+	// wo soll denn in der Methode die DirSerEx herkommen?
 	@Override
 	public void shutdown() throws DirectoryServerException {
 		// TODO: implement me
@@ -85,7 +104,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 
 		try {
-			serverSocket.setSoTimeout(60000);
+			serverSocket.setSoTimeout(10000);
 		} catch (SocketException e) {
 			// herunterfahren wenn keine neuen Connections kommen?
 			e.printStackTrace();
@@ -100,10 +119,14 @@ public class TCPDirectoryServer implements DirectoryServer {
 				// zwischen accept und threads erstellen möglich keine bis sehr wenig Programmlogik, damit man gleich wieder zu accept kommt
 				// und so ständig auf Verbindungen warten kann
 				System.out.println("Server accepted client connection...");
-				TCPClientHandler handler = new TCPClientHandler(client);
+
+				// connect hier verwenden, dass erzeugt ja Handler?!
+				//TCPClientHandler handler = new TCPClientHandler(client);
+				TCPClientHandler handler = (TCPClientHandler) connect(client);
 				handlerList.add(handler);
 				System.out.println("Server created and started new ClientHandler...");
 				service.submit(handler);
+				// frage ob ich timeout wirjlich will, vorallem wenn handler noch laufen?!
 			} catch (SocketTimeoutException e) {
 				// hier kann man auch andere Sachen machen statt breaken
 				// zb neuen trhead starten auf Konsoleneingabe hören, ob man runterfahren soll etc
@@ -113,7 +136,11 @@ public class TCPDirectoryServer implements DirectoryServer {
 				e.printStackTrace();
 			} finally {
 				System.out.println("Server is shutingdown it´s ExecutorService...");
-				shutdownExecutorService();
+				try {
+					shutdown();
+				} catch (DirectoryServerException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -129,10 +156,11 @@ public class TCPDirectoryServer implements DirectoryServer {
 		// TODO: implement me
 	}
 
+	// was bringt das denn gegenüber direkter Erzeugung, was fehlt?
 	@Override
 	public ClientHandler connect(Socket socket) {
 		// TODO: implement me
-		return null;
+		return new TCPClientHandler(socket, this);
 	}
 
 }

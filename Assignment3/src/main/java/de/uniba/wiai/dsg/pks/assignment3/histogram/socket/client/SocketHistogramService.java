@@ -2,7 +2,6 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
-import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -16,8 +15,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 public class SocketHistogramService implements HistogramService {
 	private String hostname;
@@ -47,7 +44,7 @@ public class SocketHistogramService implements HistogramService {
 			try(ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 
-				traverseDirectory(rootDirectory, out);
+				traverseDirectory(rootDirectory, out, fileExtension);
 
 				//jetzt sollte alles beim Server in Verarbeitung sein, wir können langsam nachfragen, zur Sicherheit
 				//erstmal ein Schläfchen
@@ -116,7 +113,7 @@ public class SocketHistogramService implements HistogramService {
 	 * @throws IOException          if I/O error occurred during processing of the folder
 	 * @throws InterruptedException if Thread is interrupted
 	 */
-	private void traverseDirectory(String currentFolder, ObjectOutputStream out) throws IOException, InterruptedException {
+	private void traverseDirectory(String currentFolder, ObjectOutputStream out, String fileExtension) throws IOException, InterruptedException {
 		Path folder = Paths.get(currentFolder);
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
 			for (Path path : stream) {
@@ -125,14 +122,14 @@ public class SocketHistogramService implements HistogramService {
 					throw new InterruptedIOException();
 				}
 				if (Files.isDirectory(path)) {
-					traverseDirectory(path.toString(), out);
+					traverseDirectory(path.toString(), out, fileExtension);
 
 				}
 			}
 		}
 		//Future<Histogram> result = processFilesInFolder(currentFolder);
 		//listOfFuturesRepresentingEachFolder.add(result);
-		ParseDirectory dir = new ParseDirectory(currentFolder);
+		ParseDirectory dir = new ParseDirectory(currentFolder, fileExtension);
 		out.writeObject(dir);
 		out.flush();
 	}
