@@ -1,8 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ServerMain {
 

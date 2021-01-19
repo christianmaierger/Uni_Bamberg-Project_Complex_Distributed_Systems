@@ -6,8 +6,6 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +25,6 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 	// eventuell mach ich den auch wieder weg und wir nehmen den default konst
 	public TCPDirectoryServer() {
-
 		serverSocket=null;
 	}
 
@@ -58,7 +55,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 			serverSocket = new ServerSocket(port);
 			System.out.println("Server started successfully...");
 
-			ExecutorService service = Executors.newCachedThreadPool();
+			service = Executors.newCachedThreadPool();
 
 
 			// dass finde ich halt sehr geöhnungsbedürftig, this zu submitten
