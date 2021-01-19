@@ -58,6 +58,8 @@ public class SocketHistogramService implements HistogramService {
 				try(ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
 					System.out.println("Client is reading ReturnResult...");
 					Object object = in.readObject();
+
+
 					System.out.println("As the Client got Result from Server, Connection is now terminated...");
 					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
