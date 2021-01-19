@@ -1,7 +1,10 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
-public class TerminateConnection {
+public final class TerminateConnection {
+    private static final long serialVersionUID = 1L;
 
-	// TODO: implement immutable message class
-
+    @Override
+    public String toString(){
+        return "TerminateConnection";
+    }
 }
