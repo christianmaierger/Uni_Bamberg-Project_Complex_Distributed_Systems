@@ -12,18 +12,29 @@ public final class ReturnResult implements Serializable {
     // zu wissen, was beim Serevr passiert und welche Exceptions auftreten. b) exception muss man dann hier auch deepCopy-en
     // viel zu aufwendig
     private final Histogram resultHistogram;
+    private final String errorMessage;
 
     public ReturnResult(Histogram histogram) {
         this.resultHistogram = deepCopyHistogram(histogram);
+        this.errorMessage = null;
+    }
+
+    public ReturnResult(String errorMessage) {
+        this.resultHistogram = null;
+        this.errorMessage = errorMessage;
     }
 
     public Histogram getHistogram() {
         return deepCopyHistogram(resultHistogram);
     }
 
+    public String getErrorMessage(){
+        return errorMessage;
+    }
+
     @Override
     public String toString() {
-        return "ReturnResult[histogram = " + resultHistogram.toString() + "]";
+        return "ReturnResult[histogram = " + resultHistogram.toString() + ", errorMessage = '" + errorMessage + "']";
     }
 
     private Histogram deepCopyHistogram(Histogram histogram){
