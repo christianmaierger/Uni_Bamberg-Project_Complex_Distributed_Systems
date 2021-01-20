@@ -14,37 +14,47 @@ import java.util.concurrent.Future;
 public class ReturnMessageCallable implements Callable {
     LinkedList<Future<Histogram>> futureList;
     int directoryMessageCounter;
+    boolean resultNotReade;
 
 
     public ReturnMessageCallable(LinkedList<Future<Histogram>> futureList, int directoryMessageCounter) {
         this.futureList=futureList;
         this.directoryMessageCounter=directoryMessageCounter;
+        resultNotReade=true;
     }
 
     public ReturnResult call() {
         //todo Hier beachten wir brauchen auch die utils Klasse oder wir verlagern addUpAllFields in
         // überlegen ob es passt, bzw was machen wenn es null ist
+
+        Histogram resultHistogram = null;
         ReturnResult resultMessage = null;
+
+        while (resultNotReade) {
+
         if(futureList.size()==directoryMessageCounter) {
-            Histogram resultHistogram = new Histogram();
 
-                for (Future<Histogram> future: futureList) {
-                    Histogram subResult;
-                    try {
-                        subResult = future.get();
-                        resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
+            resultNotReade=false;
 
-                        //todo Es handling ist nur ein draft
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    }
+            for (Future<Histogram> future : futureList) {
+                Histogram subResult;
+                try {
+                    subResult = future.get();
+                    resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
+
+                    //todo Es handling ist nur ein draft
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
                 }
+            }
+
+        }
 
 
 
-                resultMessage = new ReturnResult(resultHistogram);
+            resultMessage = new ReturnResult(resultHistogram);
 
         }
 

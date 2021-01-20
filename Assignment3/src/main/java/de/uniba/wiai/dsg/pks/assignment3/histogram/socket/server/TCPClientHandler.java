@@ -21,15 +21,15 @@ public class TCPClientHandler implements ClientHandler {
 	private final TCPDirectoryServer server;
 	private final LinkedList<Future<Histogram>> futureList;
 	private int directoryMessageCounter;
-
+	boolean running = true;
 
 
 	// zweiter Konst mit server könnte bei Kommunikation mit Server helfen
 	public TCPClientHandler(Socket client, TCPDirectoryServer server) {
-	this.client = client;
-	this.server=server;
-	this.futureList = new LinkedList<>();
-	this.directoryMessageCounter = 0;
+		this.client = client;
+		this.server = server;
+		this.futureList = new LinkedList<>();
+		this.directoryMessageCounter = 0;
 	}
 
 	@Override
@@ -40,7 +40,7 @@ public class TCPClientHandler implements ClientHandler {
 
 			// evtl in anderen Thread auslagern der messages annimt, aber der muss ja trotzdem die methoden hier aufrufen?!
 			// messages vielleicht in eine queue, aber ist das nicht irgendwie sequentielll, gut irgendwie ist es immer nacheinander
-			boolean running = true;
+
 			while (running) {
 
 				Object object = in.readObject();
@@ -57,21 +57,24 @@ public class TCPClientHandler implements ClientHandler {
 				} else if (object instanceof GetResult) {
 					GetResult getResultMessage = (GetResult) object;
 					process(getResultMessage);
-					running=false;
+					running = false;
 					process(getResultMessage);
 				} else if (object instanceof TerminateConnection) {
 					TerminateConnection terminateMessage = (TerminateConnection) object;
 					process(terminateMessage);
-					running=false;
+					running = false;
 				}
 
 			}
 
 
 			// evtl es einzeln behandenl, classCast dürfte durch instanceOf test nicht mehr passieren
+			// Frage was bei Fehler hier wirklich passieren soll, nehme an kein cmpletter shutdown
 		} catch (IOException | ClassCastException e) {
+			running = false;
 			System.err.println("Connection error " + e.getMessage());
 		} catch (ClassNotFoundException e) {
+			running = false;
 			System.err.println("Incoming message type could not be handled " + e.getMessage());
 		}
 	}
@@ -79,11 +82,11 @@ public class TCPClientHandler implements ClientHandler {
 	@Override
 	public void process(ParseDirectory parseDirectory) {
 		// TODO: implement me
-	TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory.getPath(), parseDirectory.getFileExtension());
+		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory.getPath(), parseDirectory.getFileExtension());
 
-     Future<Histogram> folderFuture =server.getService().submit(folderTask);
+		Future<Histogram> folderFuture = server.getService().submit(folderTask);
 
-     futureList.add(folderFuture);
+		futureList.add(folderFuture);
 
 
 	}
@@ -93,11 +96,11 @@ public class TCPClientHandler implements ClientHandler {
 		// TODO: implement me
 		// wieder überleben was bei null machen
 		// denke einfach an client und der weiß, oh das war ne exception
-		ReturnResult returnResult=null;
+		ReturnResult returnResult = null;
 		ReturnMessageCallable returnMessageCallable = new ReturnMessageCallable(futureList, directoryMessageCounter);
-		Future<ReturnResult> resultHistogramMessageFuture =server.getService().submit(returnMessageCallable);
+		Future<ReturnResult> resultHistogramMessageFuture = server.getService().submit(returnMessageCallable);
 		try {
-			 returnResult = resultHistogramMessageFuture.get();
+			returnResult = resultHistogramMessageFuture.get();
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -105,14 +108,17 @@ public class TCPClientHandler implements ClientHandler {
 			e.printStackTrace();
 		}
 
-      return returnResult;
+		return returnResult;
 	}
 
 	@Override
 	public void process(TerminateConnection terminateConnection) {
 		// TODO: implement me
-
-
+		// hier bin ich mir echt nicht sicher, denke aber disconnect aufrufen reicht erstmal?
+		// vielleicht auch insgesamt beim exc handling nur disconnecten und dem Server so ein weiteres glückliches Leben ermöglichen?
+		// sry für die Wortspielereien
+		
+			server.disconnect(this);
 
 	}
 
