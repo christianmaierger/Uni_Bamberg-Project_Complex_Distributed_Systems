@@ -17,7 +17,7 @@ public class ReturnMessageCallable implements Callable {
     private boolean resultNotReady;
     private final TCPClientHandler tcpClientHandler;
     private final GetResult getResultMessage;
-    private final boolean calculationCallable;
+    private boolean calculationCallable;
 
 
     public ReturnMessageCallable(LinkedList<Future<Histogram>> futureList, TCPClientHandler tcpClientHandler, GetResult getResultMessage, boolean calculationCallable) {
@@ -33,7 +33,7 @@ public class ReturnMessageCallable implements Callable {
         //todo Hier beachten wir brauchen auch die utils Klasse oder wir verlagern addUpAllFields in
         // überlegen ob es passt, bzw was machen wenn es null ist
 
-        Histogram resultHistogram = null;
+        Histogram resultHistogram = new Histogram();
         ReturnResult resultMessage = null;
 
         if (!calculationCallable) {

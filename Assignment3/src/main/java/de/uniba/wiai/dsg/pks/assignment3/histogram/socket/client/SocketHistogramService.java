@@ -65,11 +65,7 @@ public class SocketHistogramService implements HistogramService {
 					out.writeObject(poisonPill);
 					if(object instanceof ReturnResult) {
 						resultMessage = (ReturnResult) object;
-						if(resultMessage.getException()!=null) {
-							// hier überlegen ob man das einfach wirft, wrapped etc die e vom server
-							System.out.println("ReturnResult contained an Exeption, Server was terminated...");
-							throw resultMessage.getException();
-						}
+
 						System.out.println("ReturnResult contained an Histogram, which is returned...");
 						return resultMessage.getHistogram();
 					}
