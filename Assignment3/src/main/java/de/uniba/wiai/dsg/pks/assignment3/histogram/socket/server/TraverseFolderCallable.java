@@ -49,16 +49,19 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     public Histogram call() throws InterruptedException, IOException {
         Histogram localHistogram = new Histogram();
         processFiles(localHistogram);
-        localHistogram.setDirectories(1);
-        logProcessedDirectory(localHistogram);
+
+
         // hier muss das hsitogram noch immer zwischen gespeichert werden
         // irgendwie sollte ich das aber syncen, das wird sonst schlimm
 
        server.getSemaphore().acquire();
 
+            localHistogram.setDirectories(1);
+
             Histogram acummulatedHistogram = server.getSubResultHistogram();
 
                 server.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
+
 
         server.getSemaphore().release();
 
@@ -85,7 +88,6 @@ public class TraverseFolderCallable implements Callable<Histogram> {
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
                         processFileContent(path, localHistogram);
-                        logProcessedFile(path.toString());
                         localHistogram.setProcessedFiles(localHistogram.getProcessedFiles() + 1);
                     }
                 }

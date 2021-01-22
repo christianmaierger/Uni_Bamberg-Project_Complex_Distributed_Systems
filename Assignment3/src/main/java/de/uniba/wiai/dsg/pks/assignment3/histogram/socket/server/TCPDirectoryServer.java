@@ -104,6 +104,10 @@ public class TCPDirectoryServer implements DirectoryServer {
 		// was muss hier noch alles gemacht werden?
 		// handler muss ja selbstständig terminiert haben
 		handlerList.remove(clientHandler);
+		// so wie ich es grad hab, dass es nur einen subResultHist gibt, würde ich das lieber wegmachen
+		// soll denke ich schon pro clientHandler sein, würde das fast lieber imjeweiligen Handler halten
+		// aber Text sagt, dass soll der Server speichern?
+		setSubResultHistogram(new Histogram());
 
 	}
 

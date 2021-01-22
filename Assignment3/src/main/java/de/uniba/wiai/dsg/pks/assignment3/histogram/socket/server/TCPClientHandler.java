@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.util.LinkedList;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 public class TCPClientHandler implements ClientHandler {
@@ -21,11 +20,13 @@ public class TCPClientHandler implements ClientHandler {
 	boolean running = true;
 	private Future<ReturnResult> resultHistogramMessageFuture;
 
+
 	// zweiter Konst mit server könnte bei Kommunikation mit Server helfen
 	public TCPClientHandler(Socket client, TCPDirectoryServer server) {
 		this.client = client;
 		this.server = server;
 		this.futureList = new LinkedList<>();
+		this.directoryMessageCounter=0;
 	}
 
 	public TCPDirectoryServer getServer() {
@@ -34,6 +35,18 @@ public class TCPClientHandler implements ClientHandler {
 
 	public Socket getClient() {
 		return client;
+	}
+
+	public LinkedList<Future<Histogram>> getFutureList() {
+		return futureList;
+	}
+
+	public int getDirectoryMessageCounter() {
+		return directoryMessageCounter;
+	}
+
+	public void setDirectoryMessageCounter(int directoryMessageCounter) {
+		this.directoryMessageCounter = directoryMessageCounter;
 	}
 
 	@Override
@@ -56,15 +69,15 @@ public class TCPClientHandler implements ClientHandler {
 					// der counter soll mir die dirs zählen, damit ich weiß wann ich das result schicken kann
 					//das ist ja dann fertig wenn ich genau so viele futures wie dirs hab, da keine concurrency
 					// sollte ein einfaches int langen statt long adder Spielereien oder?
-					directoryMessageCounter++;
+					setDirectoryMessageCounter(getDirectoryMessageCounter()+1);
 					process(directoryMessage);
 				} else if (object instanceof GetResult) {
 					GetResult getResultMessage = (GetResult) object;
-					ReturnMessageCallable returnMessageCallable = new ReturnMessageCallable(futureList, this, getResultMessage, false);
+					ReturnMessageRunnable returnMessageRunnable = new ReturnMessageRunnable(futureList, this, getResultMessage, false);
 					//resultHistogramMessageFuture =
 					// versuche es mal ohne future, da dieses callable ähnlich wie ein runnable eigentlich nur den zweck hat process ansync aufzurufen und
 					// die berechnete Message in den Outputstrem zu schreiben
-					server.getService().submit(returnMessageCallable);
+					server.getService().submit(returnMessageRunnable);
 				} else if (object instanceof TerminateConnection) {
 					TerminateConnection terminateMessage = (TerminateConnection) object;
 					process(terminateMessage);
@@ -92,7 +105,10 @@ public class TCPClientHandler implements ClientHandler {
 
 		Future<Histogram> folderFuture = server.getService().submit(folderTask);
 
-		futureList.add(folderFuture);
+
+			futureList.add(folderFuture);
+
+
 
 
 	}
@@ -128,6 +144,10 @@ public class TCPClientHandler implements ClientHandler {
 		// hier bin ich mir echt nicht sicher, denke aber disconnect aufrufen reicht erstmal?
 		// vielleicht auch insgesamt beim exc handling nur disconnecten und dem Server so ein weiteres glückliches Leben ermöglichen?
 		// sry für die Wortspielereien
+
+		// in einem von 20 Fällen ca wird das zu spät denke ich aufgerufen und es kann passieren dass zb angeblich 8 Verzeichnisse traversiert wurden
+
+		// ich denke wir kriegen die terminate message um festzustellen ist es gut oder schlechtFall Termination?
 
 			server.disconnect(this);
 

@@ -12,7 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class ReturnMessageCallable implements Runnable {
+public class ReturnMessageRunnable implements Runnable {
     private final LinkedList<Future<Histogram>> futureList;
     private boolean resultNotReady;
     private final TCPClientHandler tcpClientHandler;
@@ -20,7 +20,7 @@ public class ReturnMessageCallable implements Runnable {
     private boolean calculationCallable;
 
 
-    public ReturnMessageCallable(LinkedList<Future<Histogram>> futureList, TCPClientHandler tcpClientHandler, GetResult getResultMessage, boolean calculationCallable) {
+    public ReturnMessageRunnable(LinkedList<Future<Histogram>> futureList, TCPClientHandler tcpClientHandler, GetResult getResultMessage, boolean calculationCallable) {
         this.futureList=futureList;
         this.calculationCallable = calculationCallable;
         this.resultNotReady=true;
@@ -82,17 +82,30 @@ public class ReturnMessageCallable implements Runnable {
 
         // new way with the subResultHistogram that was directly added up using a semaphore by the TraverseFolderCallables
 
-        resultMessage = tcpClientHandler.process(getResultMessage);
+       /* while (tcpClientHandler.getFutureList().size()!=tcpClientHandler.getDirectoryMessageCounter()) {
 
-        try  {
-            ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());
-            out.flush();
+        }*/
 
-            out.writeObject(resultMessage);
-
-        } catch (IOException e) {
+        // dass wäre der workaround am server, bekomme sonst keine konstanten Ergebnisse
+        // wie soll ich nur prüfen ob wir "fertig" sind? würde auch lieber den Client schlafen lassen
+        try {
+            Thread.currentThread().sleep(100);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        resultMessage = tcpClientHandler.process(getResultMessage);
+
+            try {
+                ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());
+                out.flush();
+
+                out.writeObject(resultMessage);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
 
         //return resultMessage;
     }

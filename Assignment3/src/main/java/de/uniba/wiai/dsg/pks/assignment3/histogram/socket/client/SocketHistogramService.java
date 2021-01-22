@@ -31,65 +31,78 @@ public class SocketHistogramService implements HistogramService {
 	public Histogram calculateHistogram(String rootDirectory,
 			String fileExtension) {
 
-			ReturnResult resultMessage;
+		ReturnResult resultMessage;
 
-		try(Socket server = new Socket()) {
+		try (Socket server = new Socket()) {
 
 			SocketAddress serverAddress = new InetSocketAddress(
 					hostname, port);
 
-			System.out.println("New Client tries to connect to " + hostname + ":" + port);
+			System.out.println("CLIENT: New Client tries to connect to " + hostname + ":" + port);
 			server.connect(serverAddress);
 
-			try(ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
+			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 
 				traverseDirectory(rootDirectory, out, fileExtension);
 
-				//jetzt sollte alles beim Server in Verarbeitung sein, wir können langsam nachfragen, zur Sicherheit
-				//erstmal ein Schläfchen
-				Thread.currentThread().sleep(1000);
-				System.out.println("Client is sending GetResult...");
+
+				System.out.println("CLIENT: sending GetResult...");
 				GetResult get = new GetResult();
 				out.writeObject(get);
 				out.flush();
 
 
-				try(ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
-					System.out.println("Client is reading ReturnResult...");
+				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
+					System.out.println("ClIENT: reading ReturnResult...");
 					Object object = in.readObject();
 
 
-					System.out.println("As the Client got Result from Server, Connection is now terminated...");
+					System.out.println("CLIENT: got Result from Server, Connection is now terminated...");
 					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
-					if(object instanceof ReturnResult) {
+
+					if (object instanceof ReturnResult) {
 						resultMessage = (ReturnResult) object;
 
-						System.out.println("ReturnResult contained an Histogram, which is returned...");
-						return resultMessage.getHistogram();
+						if (resultMessage.getHistogram() != null) {
+							System.out.println("CLIENT: ReturnResult contained an Histogram, which is returned...");
+							return resultMessage.getHistogram();
+						} else {
+							System.err.println("CLIENT: ReturnResult contained not an Histogram, Error!");
+							// vielleicht custom Ex thrown, oder einfach null returnen?
+							// histogram exeption?
+							throw new UnsupportedOperationException("Implement here");
+						}
 					}
-				} catch (Exception e) {
-					// provisorisch fange ich hier die e vom Server
+
+
+				} catch (IOException e) {
 					e.printStackTrace();
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+
 				}
 
-
+			} catch (IOException e) {
+				e.printStackTrace();
 			} catch (InterruptedException e) {
+				// soweit ich es sehe, kann nur traverse dir interrupted werden,
+				//wird dort aber angeblich nie geworfen?
+				// dennoch unterbricht der interrupt button die Ausführung? Ja weil ich hier sleep drin hatte
+				// bissel sleepen ist keine schlechte idee, da es interruptable ist und sicherstellt, dass
+				//wir das Ergebnis erst an einem Zeitpunkt erfragen, wo es shcon generiert wurde
 				e.printStackTrace();
 			}
-
-
-
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	// histogram exeption?
-		throw new UnsupportedOperationException("Implement here");
+
+		return null;
 	}
 
-	@Override
+		@Override
 	public String toString() {
 		return "SocketHistogramService";
 	}
@@ -116,7 +129,6 @@ public class SocketHistogramService implements HistogramService {
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
 			for (Path path : stream) {
 				if (Thread.currentThread().isInterrupted()) {
-					//shutdownPrinter(outputPool);
 					throw new InterruptedIOException();
 				}
 				if (Files.isDirectory(path)) {
@@ -125,8 +137,6 @@ public class SocketHistogramService implements HistogramService {
 				}
 			}
 		}
-		//Future<Histogram> result = processFilesInFolder(currentFolder);
-		//listOfFuturesRepresentingEachFolder.add(result);
 		ParseDirectory dir = new ParseDirectory(currentFolder, fileExtension);
 		out.writeObject(dir);
 		out.flush();
