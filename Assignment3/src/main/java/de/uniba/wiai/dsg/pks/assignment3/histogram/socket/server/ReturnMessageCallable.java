@@ -40,7 +40,8 @@ public class ReturnMessageCallable implements Callable {
 
            resultMessage = tcpClientHandler.process(getResultMessage);
 
-            try (ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream())) {
+            try  {
+                ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());
                 out.flush();
 
                 out.writeObject(resultMessage);
@@ -48,6 +49,8 @@ public class ReturnMessageCallable implements Callable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+
 
         } else {
 

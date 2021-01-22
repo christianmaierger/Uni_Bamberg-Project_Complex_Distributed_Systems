@@ -23,18 +23,19 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     @GuardedBy(value = "itself")
     private final String fileExtension;
 
+    private final TCPDirectoryServer server;
+
 
     /**
      * Creates a TraverseFolderCallable which analyses the files in one specific folder without its subfolders.
      * It only looks at files of a specified file extension. Files that have been processed are logged to console.
-     *
-     * @param rootFolder folder to search
+     *  @param rootFolder folder to search
      * @param fileExtension type of file to look at
-     *
-     * */
-    public TraverseFolderCallable(String rootFolder, String fileExtension) {
+     *@param server */
+    public TraverseFolderCallable(String rootFolder, String fileExtension, TCPDirectoryServer server) {
         this.rootFolder = rootFolder;
         this.fileExtension = fileExtension;
+        this.server=server;
     }
 
     /**
@@ -50,6 +51,15 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         processFiles(localHistogram);
         localHistogram.setDirectories(1);
         logProcessedDirectory(localHistogram);
+        // hier muss das hsitogram noch immer zwischen gespeichert werden
+        // irgendwie sollte ich das aber syncen, das wird sonst schlimm
+
+       server.getSemaphore().acquire();
+
+            Utils.addUpAllFields(localHistogram, server.getSubResultHistogram());
+
+        server.getSemaphore().release();
+
         return localHistogram;
     }
 

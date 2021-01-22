@@ -16,11 +16,6 @@ public class ReturnResult implements Serializable {
       e=null;
     }
 
-    public ReturnResult(Exception e) {
-        this.e = e;
-        resultHistogram=null;
-    }
-
 
     public Histogram getHistogram() {
         return resultHistogram;

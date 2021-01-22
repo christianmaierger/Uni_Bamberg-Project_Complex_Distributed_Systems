@@ -88,7 +88,7 @@ public class TCPClientHandler implements ClientHandler {
 	@Override
 	public void process(ParseDirectory parseDirectory) {
 		// TODO: implement me
-		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory.getPath(), parseDirectory.getFileExtension());
+		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory.getPath(), parseDirectory.getFileExtension(), server);
 
 		Future<Histogram> folderFuture = server.getService().submit(folderTask);
 

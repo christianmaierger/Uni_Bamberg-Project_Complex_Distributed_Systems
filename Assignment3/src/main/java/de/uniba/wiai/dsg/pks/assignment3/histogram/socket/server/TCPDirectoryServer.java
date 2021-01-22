@@ -9,10 +9,7 @@ import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class TCPDirectoryServer implements DirectoryServer {
 
@@ -21,13 +18,23 @@ public class TCPDirectoryServer implements DirectoryServer {
 	private ServerSocket serverSocket;
 	private ExecutorService service;
 	boolean running = true;
+	Histogram subResultHistogram;
+	Semaphore semaphore = new Semaphore(1, true);
 
 
 	// eventuell mach ich den auch wieder weg und wir nehmen den default konst
 	public TCPDirectoryServer() {
 		serverSocket=null;
+		subResultHistogram=new Histogram();
 	}
 
+	public Semaphore getSemaphore() {
+		return semaphore;
+	}
+
+	public Histogram getSubResultHistogram() {
+		return subResultHistogram;
+	}
 
 	public List<ClientHandler> getHandlerList() {
 		return handlerList;
