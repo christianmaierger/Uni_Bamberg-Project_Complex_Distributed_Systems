@@ -1,6 +1,8 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
-public final class TerminateConnection {
+import java.io.Serializable;
+
+public final class TerminateConnection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Override
