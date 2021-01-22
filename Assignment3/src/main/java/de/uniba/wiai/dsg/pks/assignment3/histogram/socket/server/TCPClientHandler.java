@@ -1,7 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -9,11 +8,9 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnec
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class TCPClientHandler implements ClientHandler {
@@ -22,14 +19,21 @@ public class TCPClientHandler implements ClientHandler {
 	private final LinkedList<Future<Histogram>> futureList;
 	private int directoryMessageCounter;
 	boolean running = true;
-
+	private Future<ReturnResult> resultHistogramMessageFuture;
 
 	// zweiter Konst mit server könnte bei Kommunikation mit Server helfen
 	public TCPClientHandler(Socket client, TCPDirectoryServer server) {
 		this.client = client;
 		this.server = server;
 		this.futureList = new LinkedList<>();
-		this.directoryMessageCounter = 0;
+	}
+
+	public TCPDirectoryServer getServer() {
+		return server;
+	}
+
+	public Socket getClient() {
+		return client;
 	}
 
 	@Override
@@ -56,9 +60,11 @@ public class TCPClientHandler implements ClientHandler {
 					process(directoryMessage);
 				} else if (object instanceof GetResult) {
 					GetResult getResultMessage = (GetResult) object;
-					process(getResultMessage);
-					running = false;
-					process(getResultMessage);
+					ReturnMessageCallable returnMessageCallable = new ReturnMessageCallable(futureList, this, getResultMessage, false);
+					//resultHistogramMessageFuture =
+					// versuche es mal ohne future, da dieses callable ähnlich wie ein runnable eigentlich nur den zweck hat process ansync aufzurufen und
+					// die berechnete Message in den Outputstrem zu schreiben
+					server.getService().submit(returnMessageCallable);
 				} else if (object instanceof TerminateConnection) {
 					TerminateConnection terminateMessage = (TerminateConnection) object;
 					process(terminateMessage);
@@ -97,16 +103,22 @@ public class TCPClientHandler implements ClientHandler {
 		// wieder überleben was bei null machen
 		// denke einfach an client und der weiß, oh das war ne exception
 		ReturnResult returnResult = null;
-		ReturnMessageCallable returnMessageCallable = new ReturnMessageCallable(futureList, directoryMessageCounter);
-		Future<ReturnResult> resultHistogramMessageFuture = server.getService().submit(returnMessageCallable);
-		try {
-			returnResult = resultHistogramMessageFuture.get();
 
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-		}
+		ReturnMessageCallable returnMessageCallculationCallable = new ReturnMessageCallable(futureList, this, getResult, true);
+		resultHistogramMessageFuture = server.getService().submit(returnMessageCallculationCallable);
+
+			try {
+
+
+				returnResult = resultHistogramMessageFuture.get();
+
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			}
+
+
 
 		return returnResult;
 	}
@@ -117,7 +129,7 @@ public class TCPClientHandler implements ClientHandler {
 		// hier bin ich mir echt nicht sicher, denke aber disconnect aufrufen reicht erstmal?
 		// vielleicht auch insgesamt beim exc handling nur disconnecten und dem Server so ein weiteres glückliches Leben ermöglichen?
 		// sry für die Wortspielereien
-		
+
 			server.disconnect(this);
 
 	}

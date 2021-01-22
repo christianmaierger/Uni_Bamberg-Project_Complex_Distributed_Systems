@@ -16,9 +16,6 @@ public class ServerMain {
 		System.out.println("Server started. Press enter to terminate.");
 
 
-
-
-
 		System.in.read();
 
 		server.shutdown();
