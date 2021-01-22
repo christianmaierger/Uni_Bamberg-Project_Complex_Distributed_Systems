@@ -39,26 +39,19 @@ public class SocketHistogramService implements HistogramService {
 			ReturnResult resultMessage;
 			SocketAddress serverAddress = new InetSocketAddress(hostname, port);
 			server.connect(serverAddress);
-			System.out.println("connected to server");
 
 			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 				traverseDirectory(rootDirectory, out, fileExtension);
-				System.out.println("Try send get result");
 				out.writeObject(new GetResult());
 				out.flush();
-				System.out.println("Get result sent");
 
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
-					System.out.println("Try read returb result");
 					Object object = in.readObject();
 					resultMessage = (ReturnResult) object;
-					System.out.println("Read returb result");
 					System.out.println(resultMessage.getHistogram());
-					System.out.println("Try send poison pill");
 					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
-					System.out.println("Sent.");
 				}
 			}
 			Histogram result = resultMessage.getHistogram();
