@@ -49,16 +49,17 @@ public class SocketHistogramService implements HistogramService {
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
 					Object object = in.readObject();
 					resultMessage = (ReturnResult) object;
-					System.out.println(resultMessage.getHistogram());
 					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
 				}
 			}
-			Histogram result = resultMessage.getHistogram();
-			if(Objects.isNull(result)){
+
+			if(Objects.isNull(resultMessage)){
 				throw new HistogramServiceException("No result Histogram present.");
+			} else{
+				return resultMessage.getHistogram();
 			}
-			return result;
+
 		} catch (IOException | InterruptedException | ClassNotFoundException exception) {
 			//TODO: exception handling
 			exception.printStackTrace();
@@ -92,8 +93,9 @@ public class SocketHistogramService implements HistogramService {
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
 			for (Path path : stream) {
 				if (Thread.currentThread().isInterrupted()) {
-					//TODO: add interruption handling
-					throw new InterruptedIOException();
+					TerminateConnection poisonPill = new TerminateConnection();
+					out.writeObject(poisonPill);
+					throw new InterruptedException("Execution has been interrupted.");
 				}
 				if (Files.isDirectory(path)) {
 					traverseDirectory(path.toString(), out, fileExtension);
@@ -103,7 +105,6 @@ public class SocketHistogramService implements HistogramService {
 		ParseDirectory parseDirectory = new ParseDirectory(currentFolder, fileExtension);
 		out.writeObject(parseDirectory);
 		out.flush();
-		System.out.println("Sent a parseDir");
 	}
 
 

@@ -32,24 +32,24 @@ public class TCPClientHandler implements ClientHandler {
 
 	@Override
 	public void run() {
+		System.out.println("Connection established to a new client.");
 		try(ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())) {
 			out.flush();
 			try(ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
-
 				while (true) {
-
 					if (Thread.currentThread().isInterrupted()) {
 						shutdownAndAwaitTermination();
 						return;
 					}
-
 					Object object = in.readObject();
+					System.out.println("Received a message in TCPClientHandler.");
 					if (object instanceof ParseDirectory) {
 						process((ParseDirectory) object);
 					} else if (object instanceof GetResult) {
 						ResultCalculator resultCalculator = new ResultCalculator(out, this);
 						threadPool.submit(resultCalculator);
 					} else if (object instanceof TerminateConnection) {
+						System.out.println("Client terminated connection. Shutdown of respective ClientHandler.");
 						process((TerminateConnection) object);
 						return;
 					}
@@ -74,10 +74,10 @@ public class TCPClientHandler implements ClientHandler {
 			try {
 				histogram = Utils.addUpAllFields(histogram, future.get());
 			} catch (InterruptedException exception){
-				parentServer.disconnect(this);
 				shutdownAndAwaitTermination();
 			}	catch (ExecutionException exception) {
-				//TODO: handle
+				System.err.println("IOException occurred in a TCPClientHandler.");
+				return null;
 			}
 		}
 		return new ReturnResult(histogram);

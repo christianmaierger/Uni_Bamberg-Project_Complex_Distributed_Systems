@@ -6,6 +6,7 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.SocketException;
 
 
 public class ResultCalculator implements Runnable {
@@ -24,7 +25,7 @@ public class ResultCalculator implements Runnable {
             out.writeObject(result);
             out.flush();
         } catch (IOException exception) {
-            exception.printStackTrace();
+            System.err.println("OutputStream problem. Client has probably closed socket.");
         }
     }
 }

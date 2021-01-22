@@ -17,7 +17,7 @@ public class ServerMain {
 
 		System.in.read();
 
-		server.shutdown();
 		System.out.println("Server is shut down...");
+		server.shutdown();
 	}
 }

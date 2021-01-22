@@ -26,7 +26,6 @@ public class DirectoryProcessor implements Callable<Histogram> {
         this.parentServer = parentServer;
     }
 
-
     @Override
     public Histogram call() throws IOException {
         Optional<Histogram> cachedResult = parentServer.getCachedResult(parseDirectory);
@@ -37,6 +36,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
             Histogram histogram = new Histogram();
             processFiles(histogram);
             histogram.setDirectories(1);
+            parentServer.putInCache(parseDirectory, histogram);
             return histogram;
         }
         catch (InterruptedException exception){

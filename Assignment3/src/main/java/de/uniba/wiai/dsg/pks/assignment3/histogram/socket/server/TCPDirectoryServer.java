@@ -6,6 +6,7 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -13,28 +14,30 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class TCPDirectoryServer implements DirectoryServer {
 	private int port;
 	private final List<ClientHandler> clientHandlers;
 	private final ExecutorService threadPool;
+	private final ExecutorService serverExecutor;
 	private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
-	private boolean running;
+	private volatile boolean running;
 
 
 	 public TCPDirectoryServer(){
 		this.clientHandlers = new LinkedList<>();
 		this.threadPool = Executors.newCachedThreadPool();
 		this.cache = new ConcurrentHashMap<>();
+		this.serverExecutor = Executors.newSingleThreadExecutor();
 	 }
 
 
 	@Override
 	public void start(int port) throws DirectoryServerException {
 			this.port = port;
-			ExecutorService serverExecutorService = Executors.newSingleThreadExecutor();
-			serverExecutorService.submit(this);
 			this.running = true;
+			serverExecutor.submit(this);
 		//TODO: wie soll denn hier die DirectoryServerException geworfen werden??
 	}
 
@@ -46,19 +49,29 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public void shutdown() throws DirectoryServerException {
 		this.running = false;
-		// TODO: shut down all running clientHandlers
+		shutdownAndAwaitTermination(threadPool);
+		shutdownAndAwaitTermination(serverExecutor);
+		System.out.println("Server shutdown completed.");
+		//TODO: where shall the exception come from?!
 	}
 
 	@Override
 	public void run() {
+
 		try(ServerSocket serverSocket = new ServerSocket(this.port)){
+			serverSocket.setSoTimeout(1000);
+			System.out.println("Server has been started successfully.");
 			while(running){
-				Socket client = serverSocket.accept();
-				ClientHandler clientHandler = connect(client);
-				clientHandlers.add(clientHandler);
+				try{
+					Socket client = serverSocket.accept();
+					ClientHandler clientHandler = connect(client);
+					clientHandlers.add(clientHandler);
+				} catch (SocketTimeoutException exception){
+					continue;
+				}
 			}
 		} catch (IOException exception){
-			throw new RuntimeException(exception.getMessage(), exception.getCause());
+			//todo: handle
 		}
 	}
 
@@ -83,4 +96,17 @@ public class TCPDirectoryServer implements DirectoryServer {
 		return clientHandler;
 	}
 
+	private void shutdownAndAwaitTermination(ExecutorService executorService) {
+		executorService.shutdown();
+		try {
+			if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
+				executorService.shutdownNow();
+				if (!executorService.awaitTermination(3, TimeUnit.SECONDS))
+					System.err.println("ThreadPool in TCPDirectoryServer did not terminate.");
+			}
+		} catch (InterruptedException ie) {
+			executorService.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+	}
 }
