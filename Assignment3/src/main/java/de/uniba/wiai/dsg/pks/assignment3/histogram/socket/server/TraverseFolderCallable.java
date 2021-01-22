@@ -5,6 +5,7 @@ import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
@@ -22,6 +23,7 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     private final String rootFolder;
     @GuardedBy(value = "itself")
     private final String fileExtension;
+    private final ParseDirectory parseDirectory;
 
     private final TCPDirectoryServer server;
 
@@ -29,13 +31,15 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     /**
      * Creates a TraverseFolderCallable which analyses the files in one specific folder without its subfolders.
      * It only looks at files of a specified file extension. Files that have been processed are logged to console.
-     *  @param rootFolder folder to search
-     * @param fileExtension type of file to look at
-     *@param server */
-    public TraverseFolderCallable(String rootFolder, String fileExtension, TCPDirectoryServer server) {
-        this.rootFolder = rootFolder;
-        this.fileExtension = fileExtension;
+     *
+     *@param server
+     *
+     */
+    public TraverseFolderCallable(ParseDirectory parseDirectory, TCPDirectoryServer server) {
+        this.rootFolder = parseDirectory.getPath();
+        this.fileExtension = parseDirectory.getFileExtension();
         this.server=server;
+        this.parseDirectory=parseDirectory;
     }
 
     /**
@@ -62,8 +66,11 @@ public class TraverseFolderCallable implements Callable<Histogram> {
 
                 server.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
 
+                server.putInCache(parseDirectory, localHistogram);
+
 
         server.getSemaphore().release();
+
 
         return localHistogram;
     }
@@ -109,13 +116,4 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         localHistogram.setDistribution(Utils.sumUpDistributions(distribution, localHistogram.getDistribution()));
     }
 
-    private void logProcessedFile(String path) throws InterruptedException {
-        Message message = new Message(MessageType.FILE, path);
-
-    }
-
-    private void logProcessedDirectory(Histogram localHistogram) throws InterruptedException {
-        Message message = new Message(MessageType.FOLDER, rootFolder, localHistogram);
-
-    }
 }

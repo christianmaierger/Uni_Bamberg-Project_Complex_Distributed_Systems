@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -101,14 +102,19 @@ public class TCPClientHandler implements ClientHandler {
 	@Override
 	public void process(ParseDirectory parseDirectory) {
 		// TODO: implement me
-		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory.getPath(), parseDirectory.getFileExtension(), server);
+		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory, server);
 
-		Future<Histogram> folderFuture = server.getService().submit(folderTask);
+		if (server.getCachedResult(parseDirectory).isPresent()) {
+			server.setSubResultHistogram(Utils.addUpAllFields(server.getCachedResult(parseDirectory).get(), server.getSubResultHistogram()));
+
+		} else {
+
+			Future<Histogram> folderFuture = server.getService().submit(folderTask);
 
 
 			futureList.add(folderFuture);
 
-
+		}
 
 
 	}
@@ -122,17 +128,8 @@ public class TCPClientHandler implements ClientHandler {
 
 
 
-/*             alter Weg mit komplizierter future Liste
 
-				returnResult = resultHistogramMessageFuture.get();
 
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			} catch (ExecutionException e) {
-				e.printStackTrace();
-			}
-
-*/
 		returnResult= new ReturnResult(server.getSubResultHistogram());
 
 		return returnResult;
@@ -149,7 +146,20 @@ public class TCPClientHandler implements ClientHandler {
 
 		// ich denke wir kriegen die terminate message um festzustellen ist es gut oder schlechtFall Termination?
 
-			server.disconnect(this);
+		if (terminateConnection.isItsallgoodman()) {
+			try {
+				Thread.currentThread().sleep(100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+		try {
+			client.close();
+		} catch (IOException e) {
+			System.err.println("CLIENTHANDLER: Socket could not be closed without exception");
+		}
+		server.disconnect(this);
 
 	}
 

@@ -8,13 +8,14 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
 
 public class TCPDirectoryServer implements DirectoryServer {
 
 	private List<ClientHandler> handlerList = new LinkedList<>();
-	private ConcurrentHashMap<ParseDirectory, Histogram> directoryHistogramHashMap =  new ConcurrentHashMap();
+	private ConcurrentHashMap<ParseDirectory, Histogram> cache =  new ConcurrentHashMap();
 	private ServerSocket serverSocket;
 	private ExecutorService service;
 	boolean running = true;
@@ -44,8 +45,8 @@ public class TCPDirectoryServer implements DirectoryServer {
 		return handlerList;
 	}
 
-	public ConcurrentHashMap<ParseDirectory, Histogram> getDirectoryHistogramHashMap() {
-		return directoryHistogramHashMap;
+	public ConcurrentHashMap<ParseDirectory, Histogram> getCache() {
+		return cache;
 	}
 
 	public ServerSocket getServerSocket() {
@@ -56,24 +57,22 @@ public class TCPDirectoryServer implements DirectoryServer {
 		return service;
 	}
 
+
+	// warum wirft dass diesee custom ex?
 	@Override
 	public void start(int port) throws DirectoryServerException {
 		// TODO: implement me
 
-		// wie von Franzi vorgeschlagen mein Vorschlag das ganze starten mit pool und server hier rienzubringen,
-		//finds eig. nice
 		try  {
 			serverSocket = new ServerSocket(port);
-			System.out.println("Server started successfully...");
+			System.out.println("SERVER: started successfully...");
 
 			service = Executors.newCachedThreadPool();
 
-
-			// dass finde ich halt sehr geöhnungsbedürftig, this zu submitten
-			// aber mei warum nicht
 			service.submit(this);
 		} catch (IOException e) {
-			System.err.println("Server could not be started successfully: " + e.getMessage());
+			System.err.println("SERVER: could not be started successfully: " + e.getMessage());
+			throw new DirectoryServerException(e.getCause());
 		}
 	}
 
@@ -87,7 +86,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 				if (!service.awaitTermination(60, TimeUnit.SECONDS)) {
 					service.shutdownNow();
 					if(!service.awaitTermination(60, TimeUnit.SECONDS)) {
-						System.err.println("Server did not terminate");
+						System.err.println("SERVER: threadpool did not terminate correctly");
 					}
 				}
 			} catch (InterruptedException e) {
@@ -120,10 +119,10 @@ public class TCPDirectoryServer implements DirectoryServer {
 		shutdownExecutorService();
 		try {
 			this.serverSocket.close();
-			System.out.println("Server shutdown as intended");
+			System.out.println("SERVER: shutdown as intended");
 		} catch (IOException e) {
-			System.err.println("Server Shutdown encountered a problem: " + e.getMessage());
-
+			System.err.println("SERVER: Shutdown encountered a problem: " + e.getMessage());
+			throw new DirectoryServerException(e.getCause());
 		}
 
 	}
@@ -134,17 +133,17 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 			try {
 				while (running) {
-					System.out.println("Server is waiting for new clients to connect...");
+					System.out.println("SERVER: waiting for new clients to connect...");
 					Socket client = serverSocket.accept();
 
-					System.out.println("Server accepted client connection...");
+					System.out.println("SERVER: accepted client connection...");
 
 					// connect hier verwenden, dass erzeugt ja Handler?!
 					//TCPClientHandler handler = new TCPClientHandler(client);
 					ClientHandler handler = connect(client);
 					handlerList.add(handler);
 					service.submit(handler);
-					System.out.println("Server created and started new ClientHandler...");
+					System.out.println("SERVER: created and started new ClientHandler...");
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -155,7 +154,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 				// und ich hier die Exc so fange, dass es weiter gehen kann?
 			} finally {
 
-				System.out.println("Server is shutingdown it´s ExecutorService...");
+				System.out.println("SERVER: shutingdown it´s ExecutorService...");
 				try {
 					// weiß immernoch nicht wo diese Exc aus der Methode herkommen soll?
 					// siehe Kommi bei Methode denke wird upgewrapt
@@ -170,12 +169,18 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public Optional<Histogram> getCachedResult(ParseDirectory request) {
 		// TODO: implement me
-		return null;
+		Histogram result = cache.get(request);
+		if(Objects.isNull(result)){
+			return Optional.empty();
+		}
+		return Optional.of(result);
+
 	}
 
 	@Override
 	public void putInCache(ParseDirectory request, Histogram result) {
 		// TODO: implement me
+		cache.putIfAbsent(request, result);
 	}
 
 	// was bringt das denn gegenüber direkter Erzeugung, was fehlt?
