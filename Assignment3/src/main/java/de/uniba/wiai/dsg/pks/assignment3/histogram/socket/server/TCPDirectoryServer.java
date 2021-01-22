@@ -36,6 +36,10 @@ public class TCPDirectoryServer implements DirectoryServer {
 		return subResultHistogram;
 	}
 
+	public void setSubResultHistogram(Histogram addUpAllFields) {
+		this.subResultHistogram=addUpAllFields;
+	}
+
 	public List<ClientHandler> getHandlerList() {
 		return handlerList;
 	}
@@ -176,5 +180,6 @@ public class TCPDirectoryServer implements DirectoryServer {
 		// TODO: implement me
 		return new TCPClientHandler(socket, this);
 	}
+
 
 }

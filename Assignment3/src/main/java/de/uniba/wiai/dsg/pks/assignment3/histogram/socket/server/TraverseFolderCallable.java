@@ -56,7 +56,9 @@ public class TraverseFolderCallable implements Callable<Histogram> {
 
        server.getSemaphore().acquire();
 
-            Utils.addUpAllFields(localHistogram, server.getSubResultHistogram());
+            Histogram acummulatedHistogram = server.getSubResultHistogram();
+
+                server.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
 
         server.getSemaphore().release();
 

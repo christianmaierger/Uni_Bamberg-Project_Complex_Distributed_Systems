@@ -12,7 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class ReturnMessageCallable implements Callable {
+public class ReturnMessageCallable implements Runnable {
     private final LinkedList<Future<Histogram>> futureList;
     private boolean resultNotReady;
     private final TCPClientHandler tcpClientHandler;
@@ -29,14 +29,14 @@ public class ReturnMessageCallable implements Callable {
         this.calculationCallable=calculationCallable;
     }
 
-    public ReturnResult call() {
+    public void run() {
         //todo Hier beachten wir brauchen auch die utils Klasse oder wir verlagern addUpAllFields in
         // überlegen ob es passt, bzw was machen wenn es null ist
 
         Histogram resultHistogram = new Histogram();
         ReturnResult resultMessage = null;
 
-        if (!calculationCallable) {
+        /*if (!calculationCallable) {
 
            resultMessage = tcpClientHandler.process(getResultMessage);
 
@@ -52,11 +52,11 @@ public class ReturnMessageCallable implements Callable {
 
 
 
-        } else {
+        } else {*/
 
 
-
-            while (resultNotReady) {
+        // this is the old way, when I had just furures with histograms in a list
+           /* while (resultNotReady) {
 
 
                 resultNotReady = false;
@@ -78,9 +78,22 @@ public class ReturnMessageCallable implements Callable {
 
                 resultMessage = new ReturnResult(resultHistogram);
 
-            }
+            }*/
 
+        // new way with the subResultHistogram that was directly added up using a semaphore by the TraverseFolderCallables
 
+        resultMessage = tcpClientHandler.process(getResultMessage);
+
+        try  {
+            ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());
+            out.flush();
+
+            out.writeObject(resultMessage);
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return resultMessage; }
+
+        //return resultMessage;
+    }
 }

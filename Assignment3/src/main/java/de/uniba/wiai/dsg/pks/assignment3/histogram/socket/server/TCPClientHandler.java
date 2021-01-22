@@ -104,11 +104,9 @@ public class TCPClientHandler implements ClientHandler {
 		// denke einfach an client und der weiß, oh das war ne exception
 		ReturnResult returnResult = null;
 
-		ReturnMessageCallable returnMessageCallculationCallable = new ReturnMessageCallable(futureList, this, getResult, true);
-		resultHistogramMessageFuture = server.getService().submit(returnMessageCallculationCallable);
 
-			try {
 
+/*             alter Weg mit komplizierter future Liste
 
 				returnResult = resultHistogramMessageFuture.get();
 
@@ -118,7 +116,8 @@ public class TCPClientHandler implements ClientHandler {
 				e.printStackTrace();
 			}
 
-
+*/
+		returnResult= new ReturnResult(server.getSubResultHistogram());
 
 		return returnResult;
 	}
