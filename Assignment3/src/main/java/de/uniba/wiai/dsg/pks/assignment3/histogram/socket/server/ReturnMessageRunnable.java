@@ -36,51 +36,6 @@ public class ReturnMessageRunnable implements Runnable {
         Histogram resultHistogram = new Histogram();
         ReturnResult resultMessage = null;
 
-        /*if (!calculationCallable) {
-
-           resultMessage = tcpClientHandler.process(getResultMessage);
-
-            try  {
-                ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());
-                out.flush();
-
-                out.writeObject(resultMessage);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-
-
-        } else {*/
-
-
-        // this is the old way, when I had just furures with histograms in a list
-           /* while (resultNotReady) {
-
-
-                resultNotReady = false;
-
-                for (Future<Histogram> future : futureList) {
-                    Histogram subResult;
-                    try {
-                        subResult = future.get();
-                        resultHistogram = Utils.addUpAllFields(subResult, resultHistogram);
-
-                        //todo Es handling ist nur ein draft
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-
-                resultMessage = new ReturnResult(resultHistogram);
-
-            }*/
-
-        // new way with the subResultHistogram that was directly added up using a semaphore by the TraverseFolderCallables
 
        /* while (tcpClientHandler.getFutureList().size()!=tcpClientHandler.getDirectoryMessageCounter()) {
 
@@ -106,7 +61,5 @@ public class ReturnMessageRunnable implements Runnable {
                 e.printStackTrace();
             }
 
-
-        //return resultMessage;
     }
 }

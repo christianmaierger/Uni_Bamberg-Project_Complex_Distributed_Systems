@@ -59,7 +59,7 @@ public class SocketHistogramService implements HistogramService {
 
 
 					System.out.println("CLIENT: got Result from Server, Connection is now terminated...");
-					TerminateConnection poisonPill = new TerminateConnection();
+					TerminateConnection poisonPill = new TerminateConnection(true);
 					out.writeObject(poisonPill);
 
 					if (object instanceof ReturnResult) {
