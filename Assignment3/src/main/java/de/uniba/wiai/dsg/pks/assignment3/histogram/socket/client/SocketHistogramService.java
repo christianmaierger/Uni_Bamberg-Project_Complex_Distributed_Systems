@@ -3,6 +3,7 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
+import de.uniba.wiai.dsg.pks.assignment.model.Result;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -20,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.concurrent.*;
 
 public class SocketHistogramService implements HistogramService {
 	private final String hostname;
@@ -43,7 +45,7 @@ public class SocketHistogramService implements HistogramService {
 				sendDirectoryParseMessages(out, rootDirectory, fileExtension);
 				requestResult(out);
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
-					resultMessage = receiveResult(in, out, server);
+					resultMessage = receiveResult(in, server);
 					terminateConnection(out);
 				}
 			}
@@ -67,14 +69,6 @@ public class SocketHistogramService implements HistogramService {
 		throw new UnsupportedOperationException();
 	}
 
-	/**
-	 * Scans through the root folder and looks for directories. After the root folder has been fully scanned,
-	 * the files in it are processed.
-	 *
-	 * @param currentFolder folder to scan through
-	 * @throws IOException          if I/O error occurred during processing of the folder
-	 * @throws InterruptedException if Thread is interrupted
-	 */
 	private void sendDirectoryParseMessages(ObjectOutputStream out, String currentFolder, String fileExtension) throws HistogramServiceException {
 		Path folder = Paths.get(currentFolder);
 		try{
@@ -105,20 +99,16 @@ public class SocketHistogramService implements HistogramService {
 		}
 	}
 
-	private ReturnResult receiveResult(ObjectInputStream in, ObjectOutputStream out, Socket server) throws HistogramServiceException {
-		ReturnResult result;
-		while(true){
-			try{
-				server.setSoTimeout(200);
-				Object object = in.readObject();
-				result = (ReturnResult) object;
-				return result;
-			} catch (SocketException exception){
-				checkForInterrupt(out);
-			} catch (IOException | ClassNotFoundException exception){
-				terminateConnection(out);
-				throw new HistogramServiceException(exception.getMessage(), exception.getCause());
-			}
+	private ReturnResult receiveResult(ObjectInputStream in, Socket server) throws HistogramServiceException {
+		ResultReceiver resultReceiver = new ResultReceiver(in, server);
+		ExecutorService receiverExecutor = Executors.newSingleThreadExecutor();
+		Future<ReturnResult> resultFuture = receiverExecutor.submit(resultReceiver);
+		try{
+			return resultFuture.get();
+		} catch (InterruptedException | ExecutionException exception){
+			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
+		} finally {
+			shutdownAndAwaitTermination(receiverExecutor);
 		}
 	}
 
@@ -141,6 +131,20 @@ public class SocketHistogramService implements HistogramService {
 	private void verifyResultIsNotNull(ReturnResult result) throws HistogramServiceException {
 		if(Objects.isNull(result)){
 			throw new HistogramServiceException("No result histogram present.");
+		}
+	}
+
+	private void shutdownAndAwaitTermination(ExecutorService executorService) throws HistogramServiceException {
+		executorService.shutdown();
+		try {
+			if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
+				executorService.shutdownNow();
+				if (!executorService.awaitTermination(3, TimeUnit.SECONDS))
+					System.err.println("Executor of ResultReceiver did not terminate.");
+			}
+		} catch (InterruptedException ie) {
+			executorService.shutdownNow();
+			Thread.currentThread().interrupt();
 		}
 	}
 }

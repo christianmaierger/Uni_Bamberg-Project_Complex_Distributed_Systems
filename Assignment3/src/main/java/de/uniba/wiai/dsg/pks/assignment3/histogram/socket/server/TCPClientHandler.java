@@ -32,7 +32,7 @@ public class TCPClientHandler implements ClientHandler {
 
 	@Override
 	public void run() {
-		System.out.println("Connection established to a new client.");
+		System.out.println("TCPClientHandler:\tConnection established to a new client.");
 		try(ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())) {
 			out.flush();
 			try(ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
@@ -42,14 +42,14 @@ public class TCPClientHandler implements ClientHandler {
 						return;
 					}
 					Object object = in.readObject();
-					System.out.println("Received a message in TCPClientHandler.");
+					System.out.println("TCPClientHandler:\tReceived a message.");
 					if (object instanceof ParseDirectory) {
 						process((ParseDirectory) object);
 					} else if (object instanceof GetResult) {
 						ResultCalculator resultCalculator = new ResultCalculator(out, this);
 						threadPool.submit(resultCalculator);
 					} else if (object instanceof TerminateConnection) {
-						System.out.println("Client terminated connection. Shutdown of respective ClientHandler.");
+						System.out.println("TCPClientHandler:\tClient terminated connection. Shutdown.");
 						process((TerminateConnection) object);
 						return;
 					}
@@ -76,7 +76,7 @@ public class TCPClientHandler implements ClientHandler {
 			} catch (InterruptedException exception){
 				shutdownAndAwaitTermination();
 			}	catch (ExecutionException exception) {
-				System.err.println("IOException occurred in a TCPClientHandler.");
+				System.err.println("TCPClientHandler:\tIOException occurred.");
 				return null;
 			}
 		}
@@ -95,7 +95,7 @@ public class TCPClientHandler implements ClientHandler {
 			if (!threadPool.awaitTermination(2, TimeUnit.SECONDS)) {
 				threadPool.shutdownNow();
 				if (!threadPool.awaitTermination(5, TimeUnit.SECONDS))
-					System.err.println("ThreadPool in TCPClientHandler did not terminate.");
+					System.err.println("TCPClientHandler:\tThreadPool did not terminate.");
 			}
 		} catch (InterruptedException ie) {
 			threadPool.shutdownNow();

@@ -28,9 +28,9 @@ public class DirectoryProcessor implements Callable<Histogram> {
 
     @Override
     public Histogram call() throws IOException {
-        Optional<Histogram> cachedResult = parentServer.getCachedResult(parseDirectory);
-        if(cachedResult.isPresent()){
-            return cachedResult.get();
+        Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
+        if(cachedHistogram.isPresent()){
+            return cachedHistogram.get();
         }
         try {
             Histogram histogram = new Histogram();
@@ -51,28 +51,28 @@ public class DirectoryProcessor implements Callable<Histogram> {
         }
     }
 
-    private void processFiles(Histogram localHistogram) throws IOException, InterruptedException {
+    private void processFiles(Histogram histogram) throws IOException, InterruptedException {
         Path folder = Paths.get(parseDirectory.getPath());
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
                     checkForInterrupt();
-                    localHistogram.setFiles(localHistogram.getFiles() + 1);
+                    histogram.setFiles(histogram.getFiles() + 1);
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(parseDirectory.getFileExtension());
                     if (fileExtensionCorrect) {
-                        processFileContent(path, localHistogram);
-                        localHistogram.setProcessedFiles(localHistogram.getProcessedFiles() + 1);
+                        processFileContent(path, histogram);
+                        histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
                     }
                 }
             }
         }
     }
 
-    private void processFileContent(Path path, Histogram localHistogram) throws IOException {
-        localHistogram.setLines(localHistogram.getLines() + DirectoryUtils.getLinesPerFile(path));
+    private void processFileContent(Path path, Histogram histogram) throws IOException {
+        histogram.setLines(histogram.getLines() + DirectoryUtils.getLinesPerFile(path));
         List<String> lines = DirectoryUtils.getFileAsLines(path);
         long[] distribution = DirectoryUtils.countLetters(lines);
-        localHistogram.setDistribution(DirectoryUtils.sumUpDistributions(distribution, localHistogram.getDistribution()));
+        histogram.setDistribution(DirectoryUtils.sumUpDistributions(distribution, histogram.getDistribution()));
     }
 }
 
