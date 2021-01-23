@@ -19,27 +19,17 @@ public class TCPDirectoryServer implements DirectoryServer {
 	private ServerSocket serverSocket;
 	private ExecutorService service;
 	boolean running = true;
-	Histogram subResultHistogram;
-	Semaphore semaphore = new Semaphore(1, true);
+
 
 
 	// eventuell mach ich den auch wieder weg und wir nehmen den default konst
 	public TCPDirectoryServer() {
 		serverSocket=null;
-		subResultHistogram=new Histogram();
 	}
 
-	public Semaphore getSemaphore() {
-		return semaphore;
-	}
 
-	public Histogram getSubResultHistogram() {
-		return subResultHistogram;
-	}
 
-	public void setSubResultHistogram(Histogram addUpAllFields) {
-		this.subResultHistogram=addUpAllFields;
-	}
+
 
 	public List<ClientHandler> getHandlerList() {
 		return handlerList;
@@ -80,9 +70,9 @@ public class TCPDirectoryServer implements DirectoryServer {
 		System.out.println("SERVER: attempting to shutdown ExecutorService...");
 			service.shutdown();
 			try {
-				if (!service.awaitTermination(60, TimeUnit.SECONDS)) {
+				if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
 					service.shutdownNow();
-					if(!service.awaitTermination(60, TimeUnit.SECONDS)) {
+					if(!service.awaitTermination(10, TimeUnit.SECONDS)) {
 						System.err.println("SERVER: threadpool did not terminate correctly");
 					}
 				}
@@ -97,13 +87,11 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public void disconnect(ClientHandler clientHandler) {
 		// TODO implement me
-		// was muss hier noch alles gemacht werden?
-		// handler muss ja selbstständig terminiert haben
+		//bemerke das socket client des jweiligen handlers wird schon in dessen process geschlossen
+
 		handlerList.remove(clientHandler);
-		// so wie ich es grad hab, dass es nur einen subResultHist gibt, würde ich das lieber wegmachen
-		// soll denke ich schon pro clientHandler sein, würde das fast lieber imjeweiligen Handler halten
-		// aber Text sagt, dass soll der Server speichern?
-		setSubResultHistogram(new Histogram());
+		clientHandler.setSubResultHistogram(new Histogram());
+		System.out.println("SERVER: successfully disconnected a CLIENTHANDLER...");
 
 	}
 
@@ -113,9 +101,11 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public void shutdown() throws DirectoryServerException {
 		// TODO: implement me
-		shutdownExecutorService(service);
+		this.running = false;
+
 		try {
 			this.serverSocket.close();
+			shutdownExecutorService(service);
 			System.out.println("SERVER: shutdown as intended");
 		} catch (IOException e) {
 			System.err.println("SERVER: Shutdown encountered a problem: " + e.getMessage());
@@ -129,40 +119,25 @@ public class TCPDirectoryServer implements DirectoryServer {
 		// TODO: implement me
 
 
-				while (running) {
-					try {
-					System.out.println("SERVER: waiting for new clients to connect...");
-					Socket client = serverSocket.accept();
-
-					System.out.println("SERVER: accepted client connection...");
-
-					// connect hier verwenden, dass erzeugt ja Handler?!
-					//TCPClientHandler handler = new TCPClientHandler(client);
-					ClientHandler handler = connect(client);
-					handlerList.add(handler);
-
-					System.out.println("SERVER: created and started new ClientHandler...");
-					} catch (IOException e) {
-						System.out.println("SERVER: a connection request from a client could not be handled correctly...");
-					}
-				}
+		while (running) {
+			try {
+				System.out.println("SERVER: waiting for new clients to connect...");
 
 
-		// hier vielleicht nur message und auf weitere warten?
-		// denke harten shutdown fast nur auf user wunsch?
+				Socket client = serverSocket.accept();
 
-			/*} finally {
+				System.out.println("SERVER: accepted client connection...");
 
-				System.out.println("SERVER: shutingdown it´s ExecutorService...");
-				try {
-					// weiß immernoch nicht wo diese Exc aus der Methode herkommen soll?
-					// siehe Kommi bei Methode denke wird upgewrapt
-					shutdown();
-				} catch (DirectoryServerException e) {
-					e.printStackTrace();
-				}
 
-			}*/
+				ClientHandler handler = connect(client);
+				handlerList.add(handler);
+				System.out.println("SERVER: created and started new ClientHandler...");
+
+			} catch (IOException e) {
+				System.out.println("SERVER: a connection request from a client could not be handled correctly...");
+			}
+		}
+
 	}
 
 	@Override
@@ -180,6 +155,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 	public void putInCache(ParseDirectory request, Histogram result) {
 		// TODO: implement me
 		cache.putIfAbsent(request, result);
+	//	System.out.println("SERVER: successfully put new histogram in cache...");
 	}
 
 	// was bringt das denn gegenüber direkter Erzeugung, was fehlt?

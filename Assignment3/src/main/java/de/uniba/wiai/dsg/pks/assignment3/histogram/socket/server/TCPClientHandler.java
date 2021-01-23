@@ -12,22 +12,21 @@ import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 public class TCPClientHandler implements ClientHandler {
 	private final Socket client;
 	private final TCPDirectoryServer server;
 	private final LinkedList<Future<Histogram>> futureList;
-	private int directoryMessageCounter;
-	boolean running = true;
-	private Future<ReturnResult> resultHistogramMessageFuture;
+	private Histogram subResultHistogram;
+	private Semaphore semaphore = new Semaphore(1, true);
 
 
-	// zweiter Konst mit server könnte bei Kommunikation mit Server helfen
 	public TCPClientHandler(Socket client, TCPDirectoryServer server) {
 		this.client = client;
 		this.server = server;
 		this.futureList = new LinkedList<>();
-		this.directoryMessageCounter=0;
+		subResultHistogram=new Histogram();
 	}
 
 	public TCPDirectoryServer getServer() {
@@ -38,39 +37,39 @@ public class TCPClientHandler implements ClientHandler {
 		return client;
 	}
 
-	public LinkedList<Future<Histogram>> getFutureList() {
-		return futureList;
+
+	public Histogram getSubResultHistogram() {
+		return subResultHistogram;
 	}
 
-	public int getDirectoryMessageCounter() {
-		return directoryMessageCounter;
+	public Semaphore getSemaphore() {
+		return semaphore;
 	}
 
-	public void setDirectoryMessageCounter(int directoryMessageCounter) {
-		this.directoryMessageCounter = directoryMessageCounter;
+	@Override
+	public void setSubResultHistogram(Histogram addUpAllFields) {
+
+		this.subResultHistogram=addUpAllFields;
 	}
 
 	@Override
 	public void run() {
 		// TODO implement me
+		boolean running = true;
 		try (ObjectInputStream in = new ObjectInputStream(client.getInputStream())) {
 
 
-			// evtl in anderen Thread auslagern der messages annimt, aber der muss ja trotzdem die methoden hier aufrufen?!
-			// messages vielleicht in eine queue, aber ist das nicht irgendwie sequentielll, gut irgendwie ist es immer nacheinander
 
 			while (running) {
 
 				Object object = in.readObject();
 
 
-				// nicht ohne test casten
 				if (object instanceof ParseDirectory) {
 					ParseDirectory directoryMessage = (ParseDirectory) object;
 					// der counter soll mir die dirs zählen, damit ich weiß wann ich das result schicken kann
 					//das ist ja dann fertig wenn ich genau so viele futures wie dirs hab, da keine concurrency
 					// sollte ein einfaches int langen statt long adder Spielereien oder?
-					setDirectoryMessageCounter(getDirectoryMessageCounter()+1);
 					process(directoryMessage);
 				} else if (object instanceof GetResult) {
 					GetResult getResultMessage = (GetResult) object;
@@ -90,27 +89,35 @@ public class TCPClientHandler implements ClientHandler {
 
 			// evtl es einzeln behandenl, classCast dürfte durch instanceOf test nicht mehr passieren
 			// Frage was bei Fehler hier wirklich passieren soll, nehme an kein cmpletter shutdown
-		} catch (IOException | ClassCastException e) {
+
+			// leider sind bei der ioex cause und message immer null
+			// soll ich hier auch disconnecten?
+			// Frage auch ob je Ex echt ganz Schluss ein soll, denke schon weil Ergebnis ist sonst Quatsch
+		} catch (IOException e) {
 			running = false;
-			System.err.println("Connection error " + e.getMessage());
+			System.err.println("CLIENTHANDLER: Connection error " + e.getCause());
+			server.disconnect(this);
+		} catch (ClassCastException e) {
+			running = false;
+			System.err.println("CLIENTHANDLER: Error parsing message object " + e.getMessage());
 		} catch (ClassNotFoundException e) {
 			running = false;
-			System.err.println("Incoming message type could not be handled " + e.getMessage());
+			System.err.println("CLIENTHANDLER: Incoming message type could not be handled " + e.getMessage());
 		}
 	}
 
 	@Override
 	public void process(ParseDirectory parseDirectory) {
 		// TODO: implement me
-		TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory, server);
 
+		// echt thread auslagern nötig, sind ja ncihtmal 20 Zeilen vor dem nächsten Durchlauf, sollte schon passen
 		if (server.getCachedResult(parseDirectory).isPresent()) {
-			server.setSubResultHistogram(Utils.addUpAllFields(server.getCachedResult(parseDirectory).get(), server.getSubResultHistogram()));
+			setSubResultHistogram(Utils.addUpAllFields(server.getCachedResult(parseDirectory).get(), getSubResultHistogram()));
 
 		} else {
 
+			TraverseFolderCallable folderTask = new TraverseFolderCallable(parseDirectory, this);
 			Future<Histogram> folderFuture = server.getService().submit(folderTask);
-
 
 			futureList.add(folderFuture);
 
@@ -126,9 +133,7 @@ public class TCPClientHandler implements ClientHandler {
 		// denke einfach an client und der weiß, oh das war ne exception
 		ReturnResult returnResult = null;
 
-
-
-		returnResult= new ReturnResult(server.getSubResultHistogram());
+		returnResult= new ReturnResult(this.getSubResultHistogram());
 
 		return returnResult;
 	}
@@ -136,28 +141,13 @@ public class TCPClientHandler implements ClientHandler {
 	@Override
 	public void process(TerminateConnection terminateConnection) {
 		// TODO: implement me
-		// hier bin ich mir echt nicht sicher, denke aber disconnect aufrufen reicht erstmal?
-		// vielleicht auch insgesamt beim exc handling nur disconnecten und dem Server so ein weiteres glückliches Leben ermöglichen?
-		// sry für die Wortspielereien
-
-		// in einem von 20 Fällen ca wird das zu spät denke ich aufgerufen und es kann passieren dass zb angeblich 8 Verzeichnisse traversiert wurden
-
-		// ich denke wir kriegen die terminate message um festzustellen ist es gut oder schlechtFall Termination?
-
-		if (terminateConnection.isItsallgoodman()) {
-			try {
-				Thread.currentThread().sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
 		try {
 			client.close();
 		} catch (IOException e) {
 			System.err.println("CLIENTHANDLER: Socket could not be closed without exception");
+		} finally {
+			server.disconnect(this);
 		}
-		server.disconnect(this);
 
 	}
 

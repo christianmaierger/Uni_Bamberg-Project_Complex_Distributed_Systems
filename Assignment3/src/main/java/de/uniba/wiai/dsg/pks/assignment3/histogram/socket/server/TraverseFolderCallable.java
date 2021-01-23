@@ -1,9 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Message;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.MessageType;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.PrintService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import net.jcip.annotations.GuardedBy;
@@ -25,20 +22,21 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     private final String fileExtension;
     private final ParseDirectory parseDirectory;
 
-    private final TCPDirectoryServer server;
+    private final TCPClientHandler handler;
 
 
     /**
      * Creates a TraverseFolderCallable which analyses the files in one specific folder without its subfolders.
      * It only looks at files of a specified file extension. Files that have been processed are logged to console.
      *
-     *@param server
      *
+     * @param parseDirectory
+     * @param handler
      */
-    public TraverseFolderCallable(ParseDirectory parseDirectory, TCPDirectoryServer server) {
+    public TraverseFolderCallable(ParseDirectory parseDirectory, TCPClientHandler handler) {
         this.rootFolder = parseDirectory.getPath();
         this.fileExtension = parseDirectory.getFileExtension();
-        this.server=server;
+        this.handler = handler;
         this.parseDirectory=parseDirectory;
     }
 
@@ -58,18 +56,18 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         // hier muss das hsitogram noch immer zwischen gespeichert werden
         // irgendwie sollte ich das aber syncen, das wird sonst schlimm
 
-       server.getSemaphore().acquire();
+      handler.getSemaphore().acquire();
 
             localHistogram.setDirectories(1);
 
-            Histogram acummulatedHistogram = server.getSubResultHistogram();
+            Histogram acummulatedHistogram = handler.getSubResultHistogram();
 
-                server.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
+                handler.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
 
-                server.putInCache(parseDirectory, localHistogram);
+                handler.getServer().putInCache(parseDirectory, localHistogram);
 
 
-        server.getSemaphore().release();
+        handler.getSemaphore().release();
 
 
         return localHistogram;

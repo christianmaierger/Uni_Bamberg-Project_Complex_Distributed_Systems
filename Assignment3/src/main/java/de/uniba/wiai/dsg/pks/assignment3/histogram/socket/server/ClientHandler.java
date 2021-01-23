@@ -1,5 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
+import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -12,4 +13,6 @@ public interface ClientHandler extends Runnable {
 	ReturnResult process(GetResult getResult);
 
 	void process(TerminateConnection terminateConnection);
+
+	void setSubResultHistogram(Histogram histogram);
 }

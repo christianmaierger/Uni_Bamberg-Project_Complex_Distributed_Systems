@@ -38,28 +38,61 @@ public class SocketHistogramService implements HistogramService {
 			SocketAddress serverAddress = new InetSocketAddress(
 					hostname, port);
 
+			if (Thread.currentThread().isInterrupted()) {
+				throw new HistogramServiceException("Execution has been interrupted before connection was esatblished.");
+			}
+
 			System.out.println("CLIENT: New Client tries to connect to " + hostname + ":" + port);
 			server.connect(serverAddress);
+
+			if (Thread.currentThread().isInterrupted()) {
+				throw new HistogramServiceException("Execution has been interrupted right after establishing connection.");
+			}
+
+			// mit menschlichen Reflexen ist es scheinabr unmöglich zuvor zu interrupten! selbt wenn man direkt nach klicken enter hämmert
 
 			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 
 				traverseDirectory(rootDirectory, out, fileExtension);
-
+				if (Thread.currentThread().isInterrupted()) {
+					TerminateConnection poisonPill = new TerminateConnection(true);
+					out.writeObject(poisonPill);
+					throw new HistogramServiceException("Execution has been interrupted.");
+				}
 
 				System.out.println("CLIENT: sending GetResult...");
 				GetResult get = new GetResult();
+				if (Thread.currentThread().isInterrupted()) {
+					TerminateConnection poisonPill = new TerminateConnection(true);
+					out.writeObject(poisonPill);
+					throw new HistogramServiceException("Execution has been interrupted.");
+				}
 				out.writeObject(get);
 				out.flush();
+				if (Thread.currentThread().isInterrupted()) {
+					TerminateConnection poisonPill = new TerminateConnection(true);
+					out.writeObject(poisonPill);
+					throw new HistogramServiceException("Execution has been interrupted.");
+				}
 
 
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
 					System.out.println("ClIENT: reading ReturnResult...");
 					Object object = in.readObject();
+					if (Thread.currentThread().isInterrupted()) {
+						TerminateConnection poisonPill = new TerminateConnection(true);
+						out.writeObject(poisonPill);
+						throw new HistogramServiceException("Execution has been interrupted.");
+					}
+					// timeout klappt so nicht, hab ewig auf Antwort vom server gewartet
+					server.setSoTimeout(300);
 
-					server.setSoTimeout(600);
-
-
+					if (Thread.currentThread().isInterrupted()) {
+						TerminateConnection poisonPill = new TerminateConnection(true);
+						out.writeObject(poisonPill);
+						throw new HistogramServiceException("Execution has been interrupted.");
+					}
 					System.out.println("CLIENT: got Result from Server, Connection is now terminated...");
 					TerminateConnection poisonPill = new TerminateConnection(true);
 					out.writeObject(poisonPill);
