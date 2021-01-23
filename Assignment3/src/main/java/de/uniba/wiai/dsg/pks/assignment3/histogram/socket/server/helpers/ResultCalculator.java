@@ -1,21 +1,25 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers;
 
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.ClientHandler;
+
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.SocketException;
+
 
 
 public class ResultCalculator implements Runnable {
     private final ObjectOutputStream out;
-    private final ClientHandler clientHandler;
+    private final TCPClientHandler clientHandler;
+    private final int number;
 
-    public ResultCalculator(ObjectOutputStream out, ClientHandler clientHandler){
+    public ResultCalculator(ObjectOutputStream out, TCPClientHandler clientHandler, int number){
         this.out = out;
         this.clientHandler = clientHandler;
+        this.number = number;
     }
 
     @Override
@@ -25,7 +29,8 @@ public class ResultCalculator implements Runnable {
             out.writeObject(result);
             out.flush();
         } catch (IOException exception) {
-            System.err.println("OutputStream problem. Client has probably closed socket.");
+            System.err.println("ClientHandler #" + number + ":\tIOException: " + exception.getMessage() + ".");
+            clientHandler.process(new TerminateConnection());
         }
     }
 }

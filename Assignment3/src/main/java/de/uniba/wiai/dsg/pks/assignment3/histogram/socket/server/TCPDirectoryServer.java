@@ -23,6 +23,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 	private final ExecutorService serverExecutor;
 	private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
 	private volatile boolean running;
+	private int serialNumberClientHandlers;
 
 
 	 public TCPDirectoryServer(){
@@ -30,6 +31,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 		this.threadPool = Executors.newCachedThreadPool();
 		this.cache = new ConcurrentHashMap<>();
 		this.serverExecutor = Executors.newSingleThreadExecutor();
+		this.serialNumberClientHandlers = 1;
 	 }
 
 
@@ -51,7 +53,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 		this.running = false;
 		shutdownAndAwaitTermination(threadPool);
 		shutdownAndAwaitTermination(serverExecutor);
-		System.out.println("Server shutdown completed.");
+		System.out.println("TCPDirectoryServer:\tServer shutdown completed.");
 		//TODO: where shall the exception come from?!
 	}
 
@@ -60,7 +62,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 		try(ServerSocket serverSocket = new ServerSocket(this.port)){
 			serverSocket.setSoTimeout(1000);
-			System.out.println("Server has been started successfully.");
+			System.out.println("TCPDirectoryServer:\tServer has been started successfully.");
 			while(running){
 				try{
 					Socket client = serverSocket.accept();
@@ -91,8 +93,9 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 	@Override
 	public ClientHandler connect(Socket socket) {
-		ClientHandler clientHandler = new TCPClientHandler(socket, this);
+		ClientHandler clientHandler = new TCPClientHandler(socket, this, serialNumberClientHandlers);
 		threadPool.submit(clientHandler);
+		serialNumberClientHandlers++;
 		return clientHandler;
 	}
 
@@ -102,7 +105,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 			if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
 				executorService.shutdownNow();
 				if (!executorService.awaitTermination(3, TimeUnit.SECONDS))
-					System.err.println("ThreadPool in TCPDirectoryServer did not terminate.");
+					System.err.println("TCPDirectoryServer:\tThreadPool did not terminate.");
 			}
 		} catch (InterruptedException ie) {
 			executorService.shutdownNow();

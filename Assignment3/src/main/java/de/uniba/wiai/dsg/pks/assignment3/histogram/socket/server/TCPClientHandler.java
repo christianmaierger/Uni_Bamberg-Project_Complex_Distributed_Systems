@@ -22,41 +22,48 @@ public class TCPClientHandler implements ClientHandler {
 	private final DirectoryServer parentServer;
 	private final ExecutorService threadPool;
 	private final List<Future<Histogram>> futureList;
+	private volatile boolean running;
+	private final int number;
 
-	public TCPClientHandler(Socket socket, DirectoryServer parentServer){
+	public TCPClientHandler(Socket socket, DirectoryServer parentServer, int number){
 		this.clientSocket = socket;
 		this.parentServer = parentServer;
 		this.threadPool = Executors.newCachedThreadPool();
 		this.futureList = new ArrayList<>();
+		this.running = true;
+		this.number = number;
 	}
 
 	@Override
 	public void run() {
-		System.out.println("TCPClientHandler:\tConnection established to a new client.");
+		System.out.println("ClientHandler #" + number + ":\tConnection established to a new client.");
 		try(ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())) {
 			out.flush();
 			try(ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
-				while (true) {
+				while (running) {
 					if (Thread.currentThread().isInterrupted()) {
 						shutdownAndAwaitTermination();
 						return;
 					}
 					Object object = in.readObject();
-					System.out.println("TCPClientHandler:\tReceived a message.");
+					System.out.println("ClientHandler #" + number + ":\tReceived a message.");
 					if (object instanceof ParseDirectory) {
 						process((ParseDirectory) object);
 					} else if (object instanceof GetResult) {
-						ResultCalculator resultCalculator = new ResultCalculator(out, this);
+						ResultCalculator resultCalculator = new ResultCalculator(out, this, number);
 						threadPool.submit(resultCalculator);
 					} else if (object instanceof TerminateConnection) {
-						System.out.println("TCPClientHandler:\tClient terminated connection. Shutdown.");
+						System.out.println("ClientHandler #" + number + ":\tClient terminated connection.");
 						process((TerminateConnection) object);
-						return;
 					}
 				}
 			}
 		} catch (IOException | ClassNotFoundException exception) {
-			// TODO: handle
+			System.err.println("ClientHandler #" + number + ":\tException: " + exception.getMessage() + ".");
+		} finally {
+			System.out.println("ClientHandler  #" + number + ":\tInitiate shutdown.");
+			shutdownAndAwaitTermination();
+			System.out.println("ClientHandler  #" + number + ":\tShutdown completed.");
 		}
 	}
 
@@ -76,7 +83,7 @@ public class TCPClientHandler implements ClientHandler {
 			} catch (InterruptedException exception){
 				shutdownAndAwaitTermination();
 			}	catch (ExecutionException exception) {
-				System.err.println("TCPClientHandler:\tIOException occurred.");
+				System.err.println("ClientHandler  #" + number + ":\tException occurred - " + exception.getMessage());
 				return null;
 			}
 		}
@@ -85,17 +92,18 @@ public class TCPClientHandler implements ClientHandler {
 
 	@Override
 	public void process(TerminateConnection terminateConnection) {
-		shutdownAndAwaitTermination();
+		this.running = false;
 	}
 
 	private void shutdownAndAwaitTermination() {
+		this.running = false;
 		parentServer.disconnect(this);
 		threadPool.shutdown();
 		try {
 			if (!threadPool.awaitTermination(2, TimeUnit.SECONDS)) {
 				threadPool.shutdownNow();
 				if (!threadPool.awaitTermination(5, TimeUnit.SECONDS))
-					System.err.println("TCPClientHandler:\tThreadPool did not terminate.");
+					System.err.println("ClientHandler  #" + number + ":\tThreadPool did not terminate.");
 			}
 		} catch (InterruptedException ie) {
 			threadPool.shutdownNow();
