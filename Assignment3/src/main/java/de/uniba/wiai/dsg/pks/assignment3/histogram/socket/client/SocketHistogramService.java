@@ -9,12 +9,12 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,37 +32,24 @@ public class SocketHistogramService implements HistogramService {
 		this.port = port;
 	}
 
-	//TODO: discuss with team: does client have to give console outputs? I don't think so
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		ReturnResult resultMessage;
 		try (Socket server = new Socket()) {
-			ReturnResult resultMessage;
 			SocketAddress serverAddress = new InetSocketAddress(hostname, port);
 			server.connect(serverAddress);
-
 			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
-				traverseDirectory(rootDirectory, out, fileExtension);
-				out.writeObject(new GetResult());
-				out.flush();
-
+				sendDirectoryParseMessages(out, rootDirectory, fileExtension);
+				requestResult(out);
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
-					Object object = in.readObject();
-					resultMessage = (ReturnResult) object;
-					TerminateConnection poisonPill = new TerminateConnection();
-					out.writeObject(poisonPill);
+					resultMessage = receiveResult(in, out, server);
+					terminateConnection(out);
 				}
 			}
-
-			if(Objects.isNull(resultMessage)){
-				throw new HistogramServiceException("No result Histogram present.");
-			} else{
-				return resultMessage.getHistogram();
-			}
-
-		} catch (IOException | InterruptedException | ClassNotFoundException exception) {
-			//TODO: exception handling
-			exception.printStackTrace();
+			verifyResultIsNotNull(resultMessage);
+			return resultMessage.getHistogram();
+		} catch (IOException exception) {
 			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
 		}
 	}
@@ -88,24 +75,72 @@ public class SocketHistogramService implements HistogramService {
 	 * @throws IOException          if I/O error occurred during processing of the folder
 	 * @throws InterruptedException if Thread is interrupted
 	 */
-	private void traverseDirectory(String currentFolder, ObjectOutputStream out, String fileExtension) throws IOException, InterruptedException {
+	private void sendDirectoryParseMessages(ObjectOutputStream out, String currentFolder, String fileExtension) throws HistogramServiceException {
 		Path folder = Paths.get(currentFolder);
-		try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
-			for (Path path : stream) {
-				if (Thread.currentThread().isInterrupted()) {
-					TerminateConnection poisonPill = new TerminateConnection();
-					out.writeObject(poisonPill);
-					throw new InterruptedException("Execution has been interrupted.");
-				}
-				if (Files.isDirectory(path)) {
-					traverseDirectory(path.toString(), out, fileExtension);
+		try{
+			try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
+				for (Path path : stream) {
+					checkForInterrupt(out);
+					if (Files.isDirectory(path)) {
+						sendDirectoryParseMessages(out, path.toString() , fileExtension);
+					}
 				}
 			}
+			ParseDirectory parseDirectory = new ParseDirectory(currentFolder, fileExtension);
+			out.writeObject(parseDirectory);
+			out.flush();
+		} catch (IOException exception){
+			terminateConnection(out);
+			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
 		}
-		ParseDirectory parseDirectory = new ParseDirectory(currentFolder, fileExtension);
-		out.writeObject(parseDirectory);
-		out.flush();
 	}
 
+	private void requestResult(ObjectOutputStream out) throws HistogramServiceException {
+		try{
+			out.writeObject(new GetResult());
+			out.flush();
+		} catch	(IOException exception){
+			terminateConnection(out);
+			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
+		}
+	}
 
+	private ReturnResult receiveResult(ObjectInputStream in, ObjectOutputStream out, Socket server) throws HistogramServiceException {
+		ReturnResult result;
+		while(true){
+			try{
+				server.setSoTimeout(200);
+				Object object = in.readObject();
+				result = (ReturnResult) object;
+				return result;
+			} catch (SocketException exception){
+				checkForInterrupt(out);
+			} catch (IOException | ClassNotFoundException exception){
+				terminateConnection(out);
+				throw new HistogramServiceException(exception.getMessage(), exception.getCause());
+			}
+		}
+	}
+
+	private void terminateConnection(ObjectOutputStream out) throws HistogramServiceException {
+		try {
+			TerminateConnection poisonPill = new TerminateConnection();
+			out.writeObject(poisonPill);
+		} catch (IOException exception){
+			throw new HistogramServiceException(exception.getMessage(), exception.getCause());
+		}
+	}
+
+	private void checkForInterrupt(ObjectOutputStream out) throws HistogramServiceException {
+		if (Thread.currentThread().isInterrupted()) {
+			terminateConnection(out);
+			throw new HistogramServiceException("Execution has been interrupted.");
+		}
+	}
+
+	private void verifyResultIsNotNull(ReturnResult result) throws HistogramServiceException {
+		if(Objects.isNull(result)){
+			throw new HistogramServiceException("No result histogram present.");
+		}
+	}
 }
