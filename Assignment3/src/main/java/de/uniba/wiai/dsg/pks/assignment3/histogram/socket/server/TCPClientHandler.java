@@ -24,6 +24,8 @@ public class TCPClientHandler implements ClientHandler {
 	private final List<Future<Histogram>> futureList;
 	private volatile boolean running;
 	private final int number;
+	private Histogram histogram;
+	private final Semaphore semaphore;
 
 	public TCPClientHandler(Socket socket, DirectoryServer parentServer, int number){
 		this.clientSocket = socket;
@@ -32,6 +34,8 @@ public class TCPClientHandler implements ClientHandler {
 		this.futureList = new ArrayList<>();
 		this.running = true;
 		this.number = number;
+		this.histogram = new Histogram();
+		this.semaphore = new Semaphore(1);
 	}
 
 	@Override
@@ -42,8 +46,7 @@ public class TCPClientHandler implements ClientHandler {
 			try(ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
 				while (running) {
 					if (Thread.currentThread().isInterrupted()) {
-						shutdownAndAwaitTermination();
-						return;
+						break;
 					}
 					Object object = in.readObject();
 					System.out.println("ClientHandler #" + number + ":\tReceived a message.");
@@ -61,15 +64,15 @@ public class TCPClientHandler implements ClientHandler {
 		} catch (IOException | ClassNotFoundException exception) {
 			System.err.println("ClientHandler #" + number + ":\tException: " + exception.getMessage() + ".");
 		} finally {
-			System.out.println("ClientHandler  #" + number + ":\tInitiate shutdown.");
+			System.out.println("ClientHandler #" + number + ":\tInitiate shutdown.");
 			shutdownAndAwaitTermination();
-			System.out.println("ClientHandler  #" + number + ":\tShutdown completed.");
+			System.out.println("ClientHandler #" + number + ":\tShutdown completed.");
 		}
 	}
 
 	@Override
 	public void process(ParseDirectory parseDirectory) {
-		DirectoryProcessor directoryProcessor = new DirectoryProcessor(parseDirectory, parentServer);
+		DirectoryProcessor directoryProcessor = new DirectoryProcessor(parseDirectory, parentServer, this);
 		Future<Histogram> histogramFuture = threadPool.submit(directoryProcessor);
 		futureList.add(histogramFuture);
 	}
@@ -79,10 +82,10 @@ public class TCPClientHandler implements ClientHandler {
 		Histogram histogram = new Histogram();
 		for (Future<Histogram> future : futureList) {
 			try {
-				histogram = Utils.addUpAllFields(histogram, future.get());
+				future.get();
 			} catch (InterruptedException exception){
 				shutdownAndAwaitTermination();
-			}	catch (ExecutionException exception) {
+			} catch (ExecutionException exception) {
 				System.err.println("ClientHandler  #" + number + ":\tException occurred - " + exception.getMessage());
 				return null;
 			}
@@ -95,12 +98,18 @@ public class TCPClientHandler implements ClientHandler {
 		this.running = false;
 	}
 
+	public void addToHistogram(Histogram inputHistogram) throws InterruptedException {
+		semaphore.acquire();
+		this.histogram = Utils.addUpAllFields(this.histogram, inputHistogram);
+		semaphore.release();
+	}
+
 	private void shutdownAndAwaitTermination() {
 		this.running = false;
 		parentServer.disconnect(this);
 		threadPool.shutdown();
 		try {
-			if (!threadPool.awaitTermination(2, TimeUnit.SECONDS)) {
+			if (!threadPool.awaitTermination(50, TimeUnit.MILLISECONDS)) {
 				threadPool.shutdownNow();
 				if (!threadPool.awaitTermination(5, TimeUnit.SECONDS))
 					System.err.println("ClientHandler  #" + number + ":\tThreadPool did not terminate.");
@@ -110,4 +119,6 @@ public class TCPClientHandler implements ClientHandler {
 			Thread.currentThread().interrupt();
 		}
 	}
+
+
 }

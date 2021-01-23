@@ -3,7 +3,6 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
-import de.uniba.wiai.dsg.pks.assignment.model.Result;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
@@ -15,7 +14,6 @@ import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +34,7 @@ public class SocketHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		validateInput(rootDirectory, fileExtension);
 		ReturnResult resultMessage;
 		try (Socket server = new Socket()) {
 			SocketAddress serverAddress = new InetSocketAddress(hostname, port);
@@ -134,7 +133,7 @@ public class SocketHistogramService implements HistogramService {
 		}
 	}
 
-	private void shutdownAndAwaitTermination(ExecutorService executorService) throws HistogramServiceException {
+	private void shutdownAndAwaitTermination(ExecutorService executorService) {
 		executorService.shutdown();
 		try {
 			if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
@@ -145,6 +144,22 @@ public class SocketHistogramService implements HistogramService {
 		} catch (InterruptedException ie) {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
+		}
+	}
+
+	private void validateInput(String rootDirectory, String fileExtension) throws HistogramServiceException {
+		if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
+			throw new HistogramServiceException("Root directory or file extension must not be null.");
+		}
+		if(rootDirectory.isBlank() || fileExtension.isBlank()){
+			throw new HistogramServiceException("Root directory or file extension must not be empty.");
+		}
+		Path rootPath = Paths.get(rootDirectory);
+		if(!Files.exists(rootPath)){
+			throw new HistogramServiceException("Root directory does not exist.");
+		}
+		if(!Files.isDirectory(rootPath)){
+			throw new HistogramServiceException("Root directory is not a directory");
 		}
 	}
 }
