@@ -128,8 +128,6 @@ public class TCPClientHandler implements ClientHandler {
 
 
 
-
-
 		returnResult= new ReturnResult(server.getSubResultHistogram());
 
 		return returnResult;

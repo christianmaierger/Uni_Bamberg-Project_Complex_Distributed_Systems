@@ -10,8 +10,7 @@ public class ServerMain {
 
 		TCPDirectoryServer server = new TCPDirectoryServer();
 
-		//fraglich ob start jetzt mit in server.run() aufgerufen werden soll, damit alles schön in einem Thread ist,
-		// aber auf der anderen Seite klang Florian so, als ob was man vorfindet, man eher so lässt
+
 		server.start(1337);
 		System.out.println("Server started. Press enter to terminate.");
 

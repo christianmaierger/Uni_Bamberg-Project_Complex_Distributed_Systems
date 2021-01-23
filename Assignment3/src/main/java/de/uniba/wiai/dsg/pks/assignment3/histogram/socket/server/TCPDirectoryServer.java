@@ -49,10 +49,6 @@ public class TCPDirectoryServer implements DirectoryServer {
 		return cache;
 	}
 
-	public ServerSocket getServerSocket() {
-		return serverSocket;
-	}
-
 	public ExecutorService getService() {
 		return service;
 	}
@@ -80,7 +76,8 @@ public class TCPDirectoryServer implements DirectoryServer {
 	/**
 	 *
 	 */
-	private void shutdownExecutorService() {
+	private void shutdownExecutorService(ExecutorService service) {
+		System.out.println("SERVER: attempting to shutdown ExecutorService...");
 			service.shutdown();
 			try {
 				if (!service.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -116,7 +113,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public void shutdown() throws DirectoryServerException {
 		// TODO: implement me
-		shutdownExecutorService();
+		shutdownExecutorService(service);
 		try {
 			this.serverSocket.close();
 			System.out.println("SERVER: shutdown as intended");
@@ -131,8 +128,9 @@ public class TCPDirectoryServer implements DirectoryServer {
 	public void run() {
 		// TODO: implement me
 
-			try {
+
 				while (running) {
+					try {
 					System.out.println("SERVER: waiting for new clients to connect...");
 					Socket client = serverSocket.accept();
 
@@ -142,17 +140,18 @@ public class TCPDirectoryServer implements DirectoryServer {
 					//TCPClientHandler handler = new TCPClientHandler(client);
 					ClientHandler handler = connect(client);
 					handlerList.add(handler);
-					service.submit(handler);
+
 					System.out.println("SERVER: created and started new ClientHandler...");
+					} catch (IOException e) {
+						System.out.println("SERVER: a connection request from a client could not be handled correctly...");
+					}
 				}
-			} catch (IOException e) {
-				e.printStackTrace();
 
 
-				// Fraglich ob ich den Server komplett runterfahren will, wenn eine Exception kommt
-				// oder ob das eher ne Option ist wenn in Main einer Enter drückt
-				// und ich hier die Exc so fange, dass es weiter gehen kann?
-			} finally {
+		// hier vielleicht nur message und auf weitere warten?
+		// denke harten shutdown fast nur auf user wunsch?
+
+			/*} finally {
 
 				System.out.println("SERVER: shutingdown it´s ExecutorService...");
 				try {
@@ -163,7 +162,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 					e.printStackTrace();
 				}
 
-			}
+			}*/
 	}
 
 	@Override
@@ -187,7 +186,9 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public ClientHandler connect(Socket socket) {
 		// TODO: implement me
-		return new TCPClientHandler(socket, this);
+		TCPClientHandler handler = new TCPClientHandler(socket, this);
+		service.submit(handler);
+		return handler;
 	}
 
 

@@ -2,15 +2,14 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
+import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
+import java.net.*;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,9 +26,10 @@ public class SocketHistogramService implements HistogramService {
 		this.port = port;
 	}
 
+	// das schmeißt an sich keine Histogram Exc
 	@Override
 	public Histogram calculateHistogram(String rootDirectory,
-			String fileExtension) {
+			String fileExtension) throws HistogramServiceException {
 
 		ReturnResult resultMessage;
 
@@ -57,6 +57,8 @@ public class SocketHistogramService implements HistogramService {
 					System.out.println("ClIENT: reading ReturnResult...");
 					Object object = in.readObject();
 
+					server.setSoTimeout(600);
+
 
 					System.out.println("CLIENT: got Result from Server, Connection is now terminated...");
 					TerminateConnection poisonPill = new TerminateConnection(true);
@@ -70,33 +72,41 @@ public class SocketHistogramService implements HistogramService {
 							return resultMessage.getHistogram();
 						} else {
 							System.err.println("CLIENT: ReturnResult contained not an Histogram, Error!");
-							// vielleicht custom Ex thrown, oder einfach null returnen?
-							// histogram exeption?
-							throw new UnsupportedOperationException("Implement here");
+							throw new HistogramServiceException("CLIENT: No valid result from Server");
 						}
 					}
 
-
+					// komsich das intelli ja mir das garnicht vorschlägt
+				} catch (SocketTimeoutException e) {
+					throw new HistogramServiceException(e.getCause());
 				} catch (IOException e) {
-					e.printStackTrace();
+
+					throw new HistogramServiceException(e.getCause());
 				} catch (ClassNotFoundException e) {
-					e.printStackTrace();
+
+					throw new HistogramServiceException(e.getCause());
 
 				}
 
 			} catch (IOException e) {
-				e.printStackTrace();
+
+				throw new HistogramServiceException(e.getCause());
 			} catch (InterruptedException e) {
 				// soweit ich es sehe, kann nur traverse dir interrupted werden,
-				//wird dort aber angeblich nie geworfen?
 				// dennoch unterbricht der interrupt button die Ausführung? Ja weil ich hier sleep drin hatte
 				// bissel sleepen ist keine schlechte idee, da es interruptable ist und sicherstellt, dass
 				//wir das Ergebnis erst an einem Zeitpunkt erfragen, wo es shcon generiert wurde
-				e.printStackTrace();
-			}
+				System.err.println("CLIENT: was interupted during reading file System");
+				throw new HistogramServiceException("Execution has been interrupted.");
 
+			}
+		// denke ConnectEx fällt unter IOEx
+		} catch (ConnectException e) {
+			System.err.println("CLIENT: was not able to establish Connection to Server");
+			throw new HistogramServiceException("Execution has been interrupted.");
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.err.println("CLIENT: there was a problem starting and connecting this c lient");
+			throw new HistogramServiceException("Execution has been interrupted.");
 		}
 
 		return null;
@@ -129,7 +139,7 @@ public class SocketHistogramService implements HistogramService {
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
 			for (Path path : stream) {
 				if (Thread.currentThread().isInterrupted()) {
-					throw new InterruptedIOException();
+					throw new InterruptedException();
 				}
 				if (Files.isDirectory(path)) {
 					traverseDirectory(path.toString(), out, fileExtension);
