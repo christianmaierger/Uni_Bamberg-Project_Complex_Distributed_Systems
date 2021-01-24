@@ -1,4 +1,4 @@
-package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers;
+package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing;
 
 
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;

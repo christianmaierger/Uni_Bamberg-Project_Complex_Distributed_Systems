@@ -1,9 +1,10 @@
-package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers;
+package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServerException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.DirectoryUtils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 
 import net.jcip.annotations.ThreadSafe;
@@ -14,7 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
@@ -34,7 +34,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
     @Override
     public Histogram call() throws DirectoryServerException{
         try {
-            validateParseDirectoryInput();
+            DirectoryUtils.validateDirectoryInput(parseDirectory.getPath(), parseDirectory.getFileExtension());
             Histogram histogram = new Histogram();
             Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
             if(cachedHistogram.isPresent()){
@@ -42,8 +42,8 @@ public class DirectoryProcessor implements Callable<Histogram> {
             } else {
                 processFiles(histogram);
                 histogram.setDirectories(1);
+                parentServer.putInCache(parseDirectory, histogram);
             }
-            parentServer.putInCache(parseDirectory, histogram);
             parentClientHandler.addToHistogram(histogram);
             return histogram;
         } catch (InterruptedException | IOException exception){
@@ -81,23 +81,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
         histogram.setDistribution(DirectoryUtils.sumUpDistributions(distribution, histogram.getDistribution()));
     }
 
-    private void validateParseDirectoryInput() throws DirectoryServerException {
-        String rootDirectory = parseDirectory.getPath();
-        String fileExtension = parseDirectory.getFileExtension();
-        if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
-            throw new DirectoryServerException("Root directory or file extension of ParseDirectory is null.");
-        }
-        if(rootDirectory.isBlank() || fileExtension.isBlank()){
-            throw new DirectoryServerException("Root directory or file extension of ParseDirectory is empty.");
-        }
-        Path rootPath = Paths.get(rootDirectory);
-        if(!Files.exists(rootPath)){
-            throw new DirectoryServerException("Root directory of ParseDirectory does not exist.");
-        }
-        if(!Files.isDirectory(rootPath)){
-            throw new DirectoryServerException("Root directory of ParseDirectory is not a directory");
-        }
-    }
+
 }
 
 

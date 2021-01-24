@@ -24,7 +24,7 @@ public final class ParseDirectory implements Serializable {
 
     @Override
     public String toString() {
-        return "ParseDirectory[path = '" + path + "', extension = '" + fileExtension + "'";
+        return "ParseDirectory[path = '" + path + "', extension = '" + fileExtension + "']";
     }
 
     @Override

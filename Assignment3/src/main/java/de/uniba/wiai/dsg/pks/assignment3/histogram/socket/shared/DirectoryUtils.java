@@ -1,12 +1,15 @@
-package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers;
+package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServerException;
 import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -77,29 +80,37 @@ public class DirectoryUtils {
 
 
     /**
-     * Adds up all fields of two histograms and returns a new histogram with their values from all fields added
-     * together.
+     * Adds up all fields of two histograms. The result will be stored in the first argument "resultHistogram" as a
+     * side effect.
      *
-     * @param subResultHistogram a new result as histogram of which the fields should be added on the fields of a given histogram
-     * @param oldHistogram the histogram to which the method should add to
-     * @return a Histogram holding the addition of the two input Histograms
+     * @param resultHistogram histogram which will contain the result of the addition
+     * @param addedHistogram histogram to add upon resultHistogram.
      */
-    public static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
-
-        long[] oldHistogramDistribution= oldHistogram.getDistribution();
-        long[] newHistogramDistribution= subResultHistogram.getDistribution();
-
+    public static void addUpAllFields(Histogram resultHistogram, Histogram addedHistogram) {
+        long[] resultHistogramDistribution = new long[Histogram.ALPHABET_SIZE];
         for(int i=0; i<26 ; i++) {
-            oldHistogramDistribution[i]= oldHistogramDistribution[i] + newHistogramDistribution[i];
+            resultHistogramDistribution[i]= resultHistogram.getDistribution()[i] + addedHistogram.getDistribution()[i];
         }
+        resultHistogram.setDistribution(resultHistogramDistribution);
+        resultHistogram.setFiles(resultHistogram.getFiles() + addedHistogram.getFiles());
+        resultHistogram.setProcessedFiles(resultHistogram.getProcessedFiles() + addedHistogram.getProcessedFiles());
+        resultHistogram.setDirectories(resultHistogram.getDirectories() + addedHistogram.getDirectories());
+        resultHistogram.setLines(resultHistogram.getLines() + addedHistogram.getLines());
+    }
 
-        Histogram result = new Histogram();
-        result.setDistribution(oldHistogramDistribution);
-        result.setFiles(oldHistogram.getFiles() + subResultHistogram.getFiles());
-        result.setProcessedFiles(oldHistogram.getProcessedFiles() + subResultHistogram.getProcessedFiles());
-        result.setDirectories(oldHistogram.getDirectories() + subResultHistogram.getDirectories());
-        result.setLines(oldHistogram.getLines() + subResultHistogram.getLines());
-
-        return result;
+    public static void validateDirectoryInput(String rootDirectory, String fileExtension) throws IllegalArgumentException {
+        if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is null.");
+        }
+        if(rootDirectory.isBlank() || fileExtension.isBlank()){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is empty.");
+        }
+        Path rootPath = Paths.get(rootDirectory);
+        if(!Files.exists(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory does not exist.");
+        }
+        if(!Files.isDirectory(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory is not a directory");
+        }
     }
 }

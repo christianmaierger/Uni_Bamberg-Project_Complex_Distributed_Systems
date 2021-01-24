@@ -2,7 +2,6 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -19,24 +18,27 @@ import java.util.concurrent.TimeUnit;
 
 public class TCPDirectoryServer implements DirectoryServer {
     private ServerSocket serverSocket;
+    private int port;
     //TODO: Was ist denn mit dieser Liste?
     private final List<ClientHandler> clientHandlers;
     private final ExecutorService threadPool;
     private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
     private volatile boolean running;
-    private int serialNumberClientHandlers;
+    private int clientCounter;
 
     public TCPDirectoryServer() {
         this.clientHandlers = new LinkedList<>();
         this.threadPool = Executors.newCachedThreadPool();
         this.cache = new ConcurrentHashMap<>();
-        this.serialNumberClientHandlers = 1;
+        this.clientCounter = 1;
         this.running = true;
+        this.port = -1;
     }
 
     @Override
     public void start(int port) throws DirectoryServerException {
         try {
+            this.port = port;
             this.serverSocket = new ServerSocket(port);
             serverSocket.setSoTimeout(50);
             threadPool.submit(this);
@@ -58,7 +60,7 @@ public class TCPDirectoryServer implements DirectoryServer {
             threadPool.shutdown();
             if (!threadPool.awaitTermination(1, TimeUnit.MILLISECONDS)) {
                 threadPool.shutdownNow();
-                if (!threadPool.awaitTermination(10, TimeUnit.SECONDS))
+                if (!threadPool.awaitTermination(20, TimeUnit.SECONDS))
                     System.err.println("DirectoryServer:\tThreadPool did not terminate.");
             }
         } catch (InterruptedException ie) {
@@ -67,10 +69,10 @@ public class TCPDirectoryServer implements DirectoryServer {
         } finally {
             try {
                 serverSocket.close();
+                System.out.println("DirectoryServer:\tShutdown completed");
             } catch (IOException io) {
                 throw new DirectoryServerException(io.getMessage(), io.getCause());
             }
-            System.out.println("DirectoryServer:\tShutdown completed");
         }
     }
 
@@ -81,11 +83,12 @@ public class TCPDirectoryServer implements DirectoryServer {
                 Socket client = serverSocket.accept();
                 ClientHandler clientHandler = connect(client);
                 clientHandlers.add(clientHandler);
-            } catch (SocketTimeoutException exception) {
+            } catch (SocketTimeoutException timeoutException) {
                 continue;
             } catch (IOException exception) {
-                // TODO: Hier überhaupt mit der Verarbeitung aufhören?? Eventuell weitermachen!
-                System.err.println("DirectoryServer:\tException: " + exception.getMessage() + ".");
+                // TODO: Meistens ist ja dann der socket kaputt --> doch eher shutdown?
+                System.err.println("DirectoryServer:\tException occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
+                createNewServerSocket();
             }
         }
     }
@@ -106,9 +109,18 @@ public class TCPDirectoryServer implements DirectoryServer {
 
     @Override
     public ClientHandler connect(Socket socket) {
-        ClientHandler clientHandler = new TCPClientHandler(socket, this, serialNumberClientHandlers);
+        ClientHandler clientHandler = new TCPClientHandler(socket, this, clientCounter);
         threadPool.submit(clientHandler);
-        serialNumberClientHandlers++;
+        clientCounter++;
         return clientHandler;
+    }
+
+    private void createNewServerSocket(){
+        try{
+            serverSocket = new ServerSocket(port);
+        } catch (IOException exception){
+            this.running = false;
+            System.err.println("DirectoryServer:\tUnable to create new socket. New clients cannot be accepted anymore.");
+        }
     }
 }

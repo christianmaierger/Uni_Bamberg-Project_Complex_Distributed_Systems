@@ -1,13 +1,9 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers.DirectoryProcessor;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.helpers.ResultCalculator;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing.DirectoryProcessor;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing.ResultCalculator;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.*;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -24,7 +20,7 @@ public class TCPClientHandler implements ClientHandler {
 	private final List<Future<Histogram>> futureList;
 	private volatile boolean running;
 	private final int number;
-	private Histogram histogram;
+	private final Histogram histogram;
 	private final Semaphore semaphore;
 
 	public TCPClientHandler(Socket socket, DirectoryServer parentServer, int number){
@@ -49,20 +45,22 @@ public class TCPClientHandler implements ClientHandler {
 						break;
 					}
 					Object object = in.readObject();
-					System.out.println("ClientHandler #" + number + ":\tReceived a message.");
+					System.out.print("ClientHandler #" + number + ":\tReceived a message: ");
 					if (object instanceof ParseDirectory) {
+						System.out.println("parse request.");
 						process((ParseDirectory) object);
 					} else if (object instanceof GetResult) {
+						System.out.println("result request.");
 						ResultCalculator resultCalculator = new ResultCalculator(out, this, number);
 						threadPool.submit(resultCalculator);
 					} else if (object instanceof TerminateConnection) {
-						System.out.println("ClientHandler #" + number + ":\tClient terminated connection.");
+						System.out.println("Client terminated connection.");
 						process((TerminateConnection) object);
 					}
 				}
 			}
 		} catch (IOException | ClassNotFoundException exception) {
-			System.err.println("ClientHandler #" + number + ":\tException: " + exception.getMessage() + ".");
+			System.err.println("ClientHandler #" + number + ":\tException: l. 64" + exception.getMessage() + ".");
 		} finally {
 			System.out.println("ClientHandler #" + number + ":\tInitiate shutdown.");
 			shutdownAndAwaitTermination();
@@ -79,18 +77,17 @@ public class TCPClientHandler implements ClientHandler {
 
 	@Override
 	public ReturnResult process(GetResult getResult) {
-		Histogram histogram = new Histogram();
 		for (Future<Histogram> future : futureList) {
 			try {
 				future.get();
 			} catch (InterruptedException exception){
 				shutdownAndAwaitTermination();
 			} catch (ExecutionException exception) {
-				System.err.println("ClientHandler  #" + number + ":\tException occurred - " + exception.getMessage());
+				System.err.println("ClientHandler  #" + number + ":\tException l. 88 - " + exception.getMessage());
 				return null;
 			}
 		}
-		return new ReturnResult(histogram);
+		return new ReturnResult(this.histogram);
 	}
 
 	@Override
@@ -99,9 +96,12 @@ public class TCPClientHandler implements ClientHandler {
 	}
 
 	public void addToHistogram(Histogram inputHistogram) throws InterruptedException {
-		semaphore.acquire();
-		this.histogram = Utils.addUpAllFields(this.histogram, inputHistogram);
-		semaphore.release();
+		try{
+			semaphore.acquire();
+			DirectoryUtils.addUpAllFields(this.histogram, inputHistogram);
+		} finally	{
+			semaphore.release();
+		}
 	}
 
 	private void shutdownAndAwaitTermination() {
