@@ -23,7 +23,6 @@ public class TCPDirectoryServer implements DirectoryServer {
     private final List<ClientHandler> clientHandlers;
     private final ExecutorService threadPool;
     private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
-    private volatile boolean running;
     private int clientCounter;
 
     public TCPDirectoryServer() {
@@ -31,7 +30,6 @@ public class TCPDirectoryServer implements DirectoryServer {
         this.threadPool = Executors.newCachedThreadPool();
         this.cache = new ConcurrentHashMap<>();
         this.clientCounter = 1;
-        this.running = true;
         this.port = -1;
     }
 
@@ -40,7 +38,7 @@ public class TCPDirectoryServer implements DirectoryServer {
         try {
             this.port = port;
             this.serverSocket = new ServerSocket(port);
-            serverSocket.setSoTimeout(50);
+            serverSocket.setSoTimeout(100);
             threadPool.submit(this);
             printToOut("Server has been started successfully.");
         } catch (IOException exception) {
@@ -56,7 +54,6 @@ public class TCPDirectoryServer implements DirectoryServer {
     @Override
     public void shutdown() throws DirectoryServerException {
         try {
-            this.running = false;
             threadPool.shutdown();
             if (!threadPool.awaitTermination(1, TimeUnit.MILLISECONDS)) {
                 threadPool.shutdownNow();
@@ -78,7 +75,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 
     @Override
     public void run() {
-        while (running) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
                 Socket client = serverSocket.accept();
                 ClientHandler clientHandler = connect(client);
@@ -121,8 +118,8 @@ public class TCPDirectoryServer implements DirectoryServer {
         try{
             serverSocket = new ServerSocket(port);
         } catch (IOException exception){
-            this.running = false;
             printToErr("Unable to create new socket. New clients cannot be accepted anymore.");
+            Thread.currentThread().interrupt();
         }
     }
 
