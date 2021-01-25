@@ -54,9 +54,12 @@ public class SocketHistogramService implements HistogramService {
 			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 
+				// timeout klappt so nicht, hab ewig auf Antwort vom server gewartet
+				server.setSoTimeout(10000);
+
 				traverseDirectory(rootDirectory, out, fileExtension);
 				if (Thread.currentThread().isInterrupted()) {
-					TerminateConnection poisonPill = new TerminateConnection(true);
+					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
 					throw new HistogramServiceException("Execution has been interrupted.");
 				}
@@ -64,14 +67,14 @@ public class SocketHistogramService implements HistogramService {
 				System.out.println("CLIENT: sending GetResult...");
 				GetResult get = new GetResult();
 				if (Thread.currentThread().isInterrupted()) {
-					TerminateConnection poisonPill = new TerminateConnection(true);
+					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
 					throw new HistogramServiceException("Execution has been interrupted.");
 				}
 				out.writeObject(get);
 				out.flush();
 				if (Thread.currentThread().isInterrupted()) {
-					TerminateConnection poisonPill = new TerminateConnection(true);
+					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
 					throw new HistogramServiceException("Execution has been interrupted.");
 				}
@@ -81,20 +84,13 @@ public class SocketHistogramService implements HistogramService {
 					System.out.println("ClIENT: reading ReturnResult...");
 					Object object = in.readObject();
 					if (Thread.currentThread().isInterrupted()) {
-						TerminateConnection poisonPill = new TerminateConnection(true);
+						TerminateConnection poisonPill = new TerminateConnection();
 						out.writeObject(poisonPill);
 						throw new HistogramServiceException("Execution has been interrupted.");
 					}
-					// timeout klappt so nicht, hab ewig auf Antwort vom server gewartet
-					server.setSoTimeout(300);
 
-					if (Thread.currentThread().isInterrupted()) {
-						TerminateConnection poisonPill = new TerminateConnection(true);
-						out.writeObject(poisonPill);
-						throw new HistogramServiceException("Execution has been interrupted.");
-					}
 					System.out.println("CLIENT: got Result from Server, Connection is now terminated...");
-					TerminateConnection poisonPill = new TerminateConnection(true);
+					TerminateConnection poisonPill = new TerminateConnection();
 					out.writeObject(poisonPill);
 
 					if (object instanceof ReturnResult) {
@@ -108,30 +104,25 @@ public class SocketHistogramService implements HistogramService {
 							throw new HistogramServiceException("CLIENT: No valid result from Server");
 						}
 					}
-
-					// komsich das intelli ja mir das garnicht vorschlägt
-				} catch (SocketTimeoutException e) {
+					// komisch das intelli ja mir das garnicht vorschlägt, ist scheinbar eine SocketExc, die Timeout triggert nicht
+				} catch (SocketTimeoutException |  java.net.SocketException e) {
+					System.err.print("CLIENT: Timeout occured, connection to server is terminated now");
 					throw new HistogramServiceException(e.getCause());
 				} catch (IOException e) {
-
+					System.err.print("CLIENT: IOException occured, connection to server is terminated now");
 					throw new HistogramServiceException(e.getCause());
 				} catch (ClassNotFoundException e) {
-
+					System.err.print("CLIENT: Error occured while parsing ResultMessage, connection to server is terminated now");
 					throw new HistogramServiceException(e.getCause());
-
 				}
-
 			} catch (IOException e) {
-
+				System.err.print("CLIENT: IOException occured, connection to server is terminated now");
 				throw new HistogramServiceException(e.getCause());
 			} catch (InterruptedException e) {
-				// soweit ich es sehe, kann nur traverse dir interrupted werden,
-				// dennoch unterbricht der interrupt button die Ausführung? Ja weil ich hier sleep drin hatte
 				// bissel sleepen ist keine schlechte idee, da es interruptable ist und sicherstellt, dass
 				//wir das Ergebnis erst an einem Zeitpunkt erfragen, wo es shcon generiert wurde
 				System.err.println("CLIENT: was interupted during reading file System");
 				throw new HistogramServiceException("Execution has been interrupted.");
-
 			}
 		// denke ConnectEx fällt unter IOEx
 		} catch (ConnectException e) {

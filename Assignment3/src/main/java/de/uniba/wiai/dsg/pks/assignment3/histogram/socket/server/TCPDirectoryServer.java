@@ -2,6 +2,8 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,23 +14,28 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.*;
 
+// eig Threadsafe durch impl, aber den Eigenschaften nach NotThreadsafe?
+@ThreadSafe
 public class TCPDirectoryServer implements DirectoryServer {
 
-	private List<ClientHandler> handlerList = new LinkedList<>();
-	private ConcurrentHashMap<ParseDirectory, Histogram> cache =  new ConcurrentHashMap();
+	private final List<ClientHandler> handlerList = new LinkedList<>();
+	@GuardedBy(value ="itself")
+	private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
+
 	private ServerSocket serverSocket;
+
 	private ExecutorService service;
-	boolean running = true;
+
+	private boolean running;
 
 
 
-	// eventuell mach ich den auch wieder weg und wir nehmen den default konst
+
 	public TCPDirectoryServer() {
+		cache =  new ConcurrentHashMap();
 		serverSocket=null;
+		running = true;
 	}
-
-
-
 
 
 	public List<ClientHandler> getHandlerList() {
@@ -44,14 +51,12 @@ public class TCPDirectoryServer implements DirectoryServer {
 	}
 
 
-	// warum wirft dass diesee custom ex?
 	@Override
 	public void start(int port) throws DirectoryServerException {
 		// TODO: implement me
-
 		try  {
 			serverSocket = new ServerSocket(port);
-			System.out.println("SERVER: started successfully...");
+			System.out.println("SERVER: started successfully");
 
 			service = Executors.newCachedThreadPool();
 
@@ -65,9 +70,12 @@ public class TCPDirectoryServer implements DirectoryServer {
 
 	/**
 	 *
+	 * Shutsdown a Threadpool that is given as param orderly according to the way advised in the ORACLE API
+	 *
+	 * @param service
 	 */
 	private void shutdownExecutorService(ExecutorService service) {
-		System.out.println("SERVER: attempting to shutdown ExecutorService...");
+		System.out.println("SERVER: attempting to shutdown ExecutorService");
 			service.shutdown();
 			try {
 				if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
@@ -88,10 +96,10 @@ public class TCPDirectoryServer implements DirectoryServer {
 	public void disconnect(ClientHandler clientHandler) {
 		// TODO implement me
 		//bemerke das socket client des jweiligen handlers wird schon in dessen process geschlossen
-
+		// das was der handler in den cache gelegt hat, muss ich doch nicht bereinigen?
 		handlerList.remove(clientHandler);
-		clientHandler.setSubResultHistogram(new Histogram());
-		System.out.println("SERVER: successfully disconnected a CLIENTHANDLER...");
+		//clientHandler.setSubResultHistogram(new Histogram()); eig jetzt auch unnötig, da der eh terminiert
+		System.out.println("SERVER: successfully disconnected a CLIENTHANDLER");
 
 	}
 
@@ -122,19 +130,15 @@ public class TCPDirectoryServer implements DirectoryServer {
 		while (running) {
 			try {
 				System.out.println("SERVER: waiting for new clients to connect...");
-
-
 				Socket client = serverSocket.accept();
-
 				System.out.println("SERVER: accepted client connection...");
-
 
 				ClientHandler handler = connect(client);
 				handlerList.add(handler);
 				System.out.println("SERVER: created and started new ClientHandler...");
 
 			} catch (IOException e) {
-				System.out.println("SERVER: a connection request from a client could not be handled correctly...");
+				System.out.println("SERVER: a connection request from a client could not be handled correctly");
 			}
 		}
 
@@ -158,7 +162,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 	//	System.out.println("SERVER: successfully put new histogram in cache...");
 	}
 
-	// was bringt das denn gegenüber direkter Erzeugung, was fehlt?
+
 	@Override
 	public ClientHandler connect(Socket socket) {
 		// TODO: implement me

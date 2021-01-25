@@ -20,8 +20,9 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     private final String rootFolder;
     @GuardedBy(value = "itself")
     private final String fileExtension;
+    @GuardedBy(value = "itself")
     private final ParseDirectory parseDirectory;
-
+    @GuardedBy(value = "itself")
     private final TCPClientHandler handler;
 
 
@@ -40,6 +41,9 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         this.parseDirectory=parseDirectory;
     }
 
+
+    // im folgenden kommen die geworfenen ex ja in futures die nie ausgelesen werden, ob das so ideal ist?
+
     /**
      * Performs a frequency analysis as statistical metrics on the files of type this.fileExtension in this.rootFolder and
      * returns its analysis as a Histogram. Processed files are logged to console.
@@ -48,13 +52,10 @@ public class TraverseFolderCallable implements Callable<Histogram> {
      * @throws InterruptedException if the current Thread is interrupted
      * @throws IOException if an I/O error occurs
      */
-    public Histogram call() throws InterruptedException, IOException {
+    public Histogram call() throws IOException, InterruptedException {
         Histogram localHistogram = new Histogram();
         processFiles(localHistogram);
 
-
-        // hier muss das hsitogram noch immer zwischen gespeichert werden
-        // irgendwie sollte ich das aber syncen, das wird sonst schlimm
 
       handler.getSemaphore().acquire();
 
@@ -73,22 +74,19 @@ public class TraverseFolderCallable implements Callable<Histogram> {
         return localHistogram;
     }
 
+    // das braucht auch eigentlich garnimmer interuptable sein
+
     /**
-     * Scans through the root folder and looks for files. Each file found while iterating is then processed and send as
-     * Message to the PrintService to be printed.
+     * Scans through the root folder and looks for files. Each file found while iterating is then processed
      *
      * @param localHistogram the histogram for one folder that the Callable was created for and that is processed here
      * @throws IOException          if I/O error occurred during processing of the folder and its files
-     * @throws InterruptedException if Thread is interrupted
      */
-    private void processFiles(Histogram localHistogram) throws IOException, InterruptedException {
+    private void processFiles(Histogram localHistogram) throws IOException {
         Path folder = Paths.get(rootFolder);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
-                    if(Thread.currentThread().isInterrupted()){
-                        throw new InterruptedException("Execution has been interrupted.");
-                    }
                     localHistogram.setFiles(localHistogram.getFiles() + 1);
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {

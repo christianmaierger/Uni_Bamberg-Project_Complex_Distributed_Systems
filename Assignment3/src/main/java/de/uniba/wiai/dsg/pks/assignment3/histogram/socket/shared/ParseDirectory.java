@@ -1,11 +1,14 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
+import net.jcip.annotations.Immutable;
+
 import java.io.Serializable;
 import java.util.Objects;
 
+@Immutable
 public final class ParseDirectory implements Serializable {
 	// TODO: implement immutable message class
-    private static final long serialVersionUID = 4L;
+    private static final long serialVersionUID = 5L;
 
     private final String path;
     private final String fileExtension;

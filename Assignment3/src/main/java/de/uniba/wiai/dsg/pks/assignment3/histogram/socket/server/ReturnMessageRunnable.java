@@ -4,23 +4,28 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.shared.Utils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
+import net.jcip.annotations.GuardedBy;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.LinkedList;
 import java.util.concurrent.Future;
 
+// so gesehen threadsafe, es geht ja nichts raus, die liste wird halt verändert
 public class ReturnMessageRunnable implements Runnable {
+
     private final LinkedList<Future<Histogram>> futureList;
+    @GuardedBy(value="itself")
     private final TCPClientHandler tcpClientHandler;
+    @GuardedBy(value="itself")
     private final GetResult getResultMessage;
 
 
 
-    public ReturnMessageRunnable(LinkedList<Future<Histogram>> futureList, TCPClientHandler tcpClientHandler, GetResult getResultMessage, boolean calculationCallable) {
-        this.futureList=futureList;
+    public ReturnMessageRunnable(TCPClientHandler tcpClientHandler, GetResult getResultMessage) {
         this.tcpClientHandler=tcpClientHandler;
         this.getResultMessage=getResultMessage;
+        this.futureList=tcpClientHandler.getFutureList() ;
 
     }
 
@@ -30,7 +35,7 @@ public class ReturnMessageRunnable implements Runnable {
 
         ReturnResult resultMessage = null;
 
-
+        // ich kann doch aber so nicht garantieren, dass die liste schon voll ist, doch message counter?
 
         while (futureList.size()>0) {
             futureList.removeIf(Future::isDone);

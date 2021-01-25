@@ -1,13 +1,15 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import net.jcip.annotations.Immutable;
 
 import java.io.Serializable;
 import java.util.Objects;
 
+@Immutable
 public class ReturnResult implements Serializable {
     // TODO: implement immutable message class
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;
 
     private final Histogram resultHistogram;
 
