@@ -26,6 +26,8 @@ public class SocketHistogramService implements HistogramService {
 		this.port = port;
 	}
 
+
+	//todo input validieren
 	// das schmeißt an sich keine Histogram Exc
 	@Override
 	public Histogram calculateHistogram(String rootDirectory,
@@ -54,8 +56,7 @@ public class SocketHistogramService implements HistogramService {
 			try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
 				out.flush();
 
-				// timeout klappt so nicht, hab ewig auf Antwort vom server gewartet
-				server.setSoTimeout(10000);
+
 
 				traverseDirectory(rootDirectory, out, fileExtension);
 				if (Thread.currentThread().isInterrupted()) {
@@ -82,6 +83,8 @@ public class SocketHistogramService implements HistogramService {
 
 				try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
 					System.out.println("ClIENT: reading ReturnResult...");
+					// timeout klappt so nicht, hab ewig auf Antwort vom server gewartet
+					server.setSoTimeout(100);
 					Object object = in.readObject();
 					if (Thread.currentThread().isInterrupted()) {
 						TerminateConnection poisonPill = new TerminateConnection();

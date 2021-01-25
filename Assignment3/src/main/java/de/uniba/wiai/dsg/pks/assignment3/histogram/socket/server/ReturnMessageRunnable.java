@@ -31,20 +31,14 @@ public class ReturnMessageRunnable implements Runnable {
 
     public void run() {
         //todo Hier beachten wir brauchen auch die utils Klasse oder wir verlagern addUpAllFields in
-        // überlegen ob es passt, bzw was machen wenn es null ist
 
         ReturnResult resultMessage = null;
-
-        // ich kann doch aber so nicht garantieren, dass die liste schon voll ist, doch message counter?
 
         while (futureList.size()>0) {
             futureList.removeIf(Future::isDone);
         }
 
-
-
         resultMessage = tcpClientHandler.process(getResultMessage);
-
 
             try {
                 ObjectOutputStream out = new ObjectOutputStream(tcpClientHandler.getClient().getOutputStream());

@@ -29,6 +29,7 @@ public class TCPClientHandler implements ClientHandler {
 	@GuardedBy(value ="itself")
 	private Semaphore semaphore = new Semaphore(1, true);
 
+	// interuptable machen! todo
 
 	public TCPClientHandler(Socket client, TCPDirectoryServer server) {
 		this.client = client;
@@ -44,6 +45,8 @@ public class TCPClientHandler implements ClientHandler {
 	public Socket getClient() {
 		return client;
 	}
+
+	//statt getter methode die direkt rechnet
 
 	public Histogram getSubResultHistogram() {
 		return subResultHistogram;
@@ -93,7 +96,7 @@ public class TCPClientHandler implements ClientHandler {
 			// Frage auch ob je Ex echt ganz Schluss ein soll, denke schon weil Ergebnis ist sonst Quatsch
 		} catch (IOException e) {
 			running = false;
-			System.err.println("CLIENTHANDLER: Connection error " + e.getCause());
+			System.err.println("CLIENTHANDLER: Connection error " + e.getMessage());
 			server.disconnect(this);
 		} catch (ClassCastException e) {
 			running = false;
@@ -120,7 +123,6 @@ public class TCPClientHandler implements ClientHandler {
 			Future<Histogram> folderFuture = server.getService().submit(folderTask);
 
 			futureList.add(folderFuture);
-
 		}
 
 
@@ -141,13 +143,11 @@ public class TCPClientHandler implements ClientHandler {
 	public void process(TerminateConnection terminateConnection) {
 		// TODO: implement me
 		try {
+			server.disconnect(this);
 			client.close();
 		} catch (IOException e) {
 			System.err.println("CLIENTHANDLER: Socket could not be closed without exception");
-		} finally {
-			server.disconnect(this);
 		}
-
 	}
 
 }

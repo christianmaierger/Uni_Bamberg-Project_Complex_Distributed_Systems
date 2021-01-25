@@ -95,12 +95,8 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public void disconnect(ClientHandler clientHandler) {
 		// TODO implement me
-		//bemerke das socket client des jweiligen handlers wird schon in dessen process geschlossen
-		// das was der handler in den cache gelegt hat, muss ich doch nicht bereinigen?
 		handlerList.remove(clientHandler);
-		//clientHandler.setSubResultHistogram(new Histogram()); eig jetzt auch unnötig, da der eh terminiert
 		System.out.println("SERVER: successfully disconnected a CLIENTHANDLER");
-
 	}
 
 
@@ -112,15 +108,16 @@ public class TCPDirectoryServer implements DirectoryServer {
 		this.running = false;
 
 		try {
-			this.serverSocket.close();
 			shutdownExecutorService(service);
+			this.serverSocket.close();
 			System.out.println("SERVER: shutdown as intended");
 		} catch (IOException e) {
 			System.err.println("SERVER: Shutdown encountered a problem: " + e.getMessage());
 			throw new DirectoryServerException(e.getCause());
 		}
+		}
 
-	}
+
 
 	@Override
 	public void run() {
@@ -134,6 +131,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 				System.out.println("SERVER: accepted client connection...");
 
 				ClientHandler handler = connect(client);
+
 				handlerList.add(handler);
 				System.out.println("SERVER: created and started new ClientHandler...");
 
@@ -152,7 +150,6 @@ public class TCPDirectoryServer implements DirectoryServer {
 			return Optional.empty();
 		}
 		return Optional.of(result);
-
 	}
 
 	@Override
@@ -166,7 +163,7 @@ public class TCPDirectoryServer implements DirectoryServer {
 	@Override
 	public ClientHandler connect(Socket socket) {
 		// TODO: implement me
-		TCPClientHandler handler = new TCPClientHandler(socket, this);
+		ClientHandler handler = new TCPClientHandler(socket, this);
 		service.submit(handler);
 		return handler;
 	}

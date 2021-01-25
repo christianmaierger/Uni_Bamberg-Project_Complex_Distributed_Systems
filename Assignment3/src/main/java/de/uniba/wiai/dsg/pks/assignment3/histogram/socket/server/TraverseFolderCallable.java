@@ -55,26 +55,21 @@ public class TraverseFolderCallable implements Callable<Histogram> {
     public Histogram call() throws IOException, InterruptedException {
         Histogram localHistogram = new Histogram();
         processFiles(localHistogram);
+        localHistogram.setDirectories(1);
 
-
-      handler.getSemaphore().acquire();
-
-            localHistogram.setDirectories(1);
-
-            Histogram acummulatedHistogram = handler.getSubResultHistogram();
-
-                handler.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
-
-                handler.getServer().putInCache(parseDirectory, localHistogram);
-
-
+        handler.getSemaphore().acquire();
+        Histogram acummulatedHistogram = handler.getSubResultHistogram();
+        handler.setSubResultHistogram(Utils.addUpAllFields(localHistogram, acummulatedHistogram));
         handler.getSemaphore().release();
 
-
+        handler.getServer().putInCache(parseDirectory, localHistogram);
         return localHistogram;
     }
 
     // das braucht auch eigentlich garnimmer interuptable sein
+
+    // Abfragen ob thread interupted ist
+
 
     /**
      * Scans through the root folder and looks for files. Each file found while iterating is then processed
