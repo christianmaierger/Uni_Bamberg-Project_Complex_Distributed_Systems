@@ -42,7 +42,7 @@ public class TCPDirectoryServer implements DirectoryServer {
             this.serverSocket = new ServerSocket(port);
             serverSocket.setSoTimeout(50);
             threadPool.submit(this);
-            System.out.println("DirectoryServer:\tServer has been started successfully.");
+            printToOut("Server has been started successfully.");
         } catch (IOException exception) {
             throw new DirectoryServerException(exception.getMessage(), exception.getCause());
         }
@@ -61,7 +61,7 @@ public class TCPDirectoryServer implements DirectoryServer {
             if (!threadPool.awaitTermination(1, TimeUnit.MILLISECONDS)) {
                 threadPool.shutdownNow();
                 if (!threadPool.awaitTermination(20, TimeUnit.SECONDS))
-                    System.err.println("DirectoryServer:\tThreadPool did not terminate.");
+                    printToErr("ThreadPool did not terminate.");
             }
         } catch (InterruptedException ie) {
             threadPool.shutdownNow();
@@ -69,7 +69,7 @@ public class TCPDirectoryServer implements DirectoryServer {
         } finally {
             try {
                 serverSocket.close();
-                System.out.println("DirectoryServer:\tShutdown completed");
+                printToOut("Shutdown completed.");
             } catch (IOException io) {
                 throw new DirectoryServerException(io.getMessage(), io.getCause());
             }
@@ -87,7 +87,7 @@ public class TCPDirectoryServer implements DirectoryServer {
                 continue;
             } catch (IOException exception) {
                 // TODO: Meistens ist ja dann der socket kaputt --> doch eher shutdown?
-                System.err.println("DirectoryServer:\tException occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
+                printToErr("Exception occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
                 createNewServerSocket();
                 //TODO: Frage an Tut: sollen wir uns auch um so etwas wie reconnection nach einem absturz kümmern?
                 // Also z.B. soll, wenn der ClientHandler abtürzt oder null zurückgibt, der Client eine neue Anfrage starten?
@@ -122,7 +122,15 @@ public class TCPDirectoryServer implements DirectoryServer {
             serverSocket = new ServerSocket(port);
         } catch (IOException exception){
             this.running = false;
-            System.err.println("DirectoryServer:\tUnable to create new socket. New clients cannot be accepted anymore.");
+            printToErr("Unable to create new socket. New clients cannot be accepted anymore.");
         }
+    }
+
+    private void printToOut(String message){
+        System.out.println("DirectoryServer:\t" + message);
+    }
+
+    private void printToErr(String message){
+        System.err.println("DirectoryServer:\t" + message);
     }
 }

@@ -29,8 +29,7 @@ public class ResultCalculator implements Runnable {
                 out.flush();
             }
         } catch (IOException exception) {
-            System.err.println("ClientHandler #" + number + ":\tIOException: " + exception.getMessage() + ".");
-            clientHandler.process(new TerminateConnection());
+            System.err.println("ClientHandler #" + number + ":\tIOException while returning result: " + exception.getMessage() + ".");
         }
     }
 }

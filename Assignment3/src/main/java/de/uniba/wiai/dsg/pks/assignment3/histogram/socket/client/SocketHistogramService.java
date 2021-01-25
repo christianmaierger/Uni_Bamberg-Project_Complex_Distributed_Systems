@@ -36,16 +36,18 @@ public class SocketHistogramService implements HistogramService {
         try (Socket server = new Socket()) {
             SocketAddress serverAddress = new InetSocketAddress(hostname, port);
             server.connect(serverAddress);
+            checkForInterrupt();
             try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
                 out.flush();
                 sendDirectoryParseMessages(out, rootDirectory, fileExtension);
                 requestResult(out);
                 try (ObjectInputStream in = new ObjectInputStream(server.getInputStream())) {
-                    resultMessage = receiveResult(in, server);
+                    resultMessage = receiveResult(in, out, server);
                     terminateConnection(out);
                 }
             }
-            verifyResultIsNotNull(resultMessage);
+            checkForInterrupt();
+            verifyResultIsValid(resultMessage);
             return resultMessage.getHistogram();
         } catch (IOException exception) {
             throw new HistogramServiceException(exception.getMessage(), exception.getCause());
@@ -96,13 +98,14 @@ public class SocketHistogramService implements HistogramService {
         }
     }
 
-    private ReturnResult receiveResult(ObjectInputStream in, Socket server) throws HistogramServiceException {
+    private ReturnResult receiveResult(ObjectInputStream in, ObjectOutputStream out, Socket server) throws HistogramServiceException {
         ResultReceiver resultReceiver = new ResultReceiver(in, server);
         ExecutorService receiverExecutor = Executors.newSingleThreadExecutor();
         Future<ReturnResult> resultFuture = receiverExecutor.submit(resultReceiver);
         try {
             return resultFuture.get();
         } catch (InterruptedException | ExecutionException exception) {
+            terminateConnection(out);
             throw new HistogramServiceException(exception.getMessage(), exception.getCause());
         } finally {
             shutdownAndAwaitTermination(receiverExecutor);
@@ -125,7 +128,13 @@ public class SocketHistogramService implements HistogramService {
         }
     }
 
-    private void verifyResultIsNotNull(ReturnResult result) throws HistogramServiceException {
+    private void checkForInterrupt() throws HistogramServiceException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new HistogramServiceException("Execution has been interrupted.");
+        }
+    }
+
+    private void verifyResultIsValid(ReturnResult result) throws HistogramServiceException {
         if (Objects.isNull(result)) {
             throw new HistogramServiceException("No result histogram present.");
         }
