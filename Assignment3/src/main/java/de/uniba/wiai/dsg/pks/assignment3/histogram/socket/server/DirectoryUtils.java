@@ -1,4 +1,4 @@
-package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
+package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServerException;
@@ -96,21 +96,5 @@ public class DirectoryUtils {
         resultHistogram.setProcessedFiles(resultHistogram.getProcessedFiles() + addedHistogram.getProcessedFiles());
         resultHistogram.setDirectories(resultHistogram.getDirectories() + addedHistogram.getDirectories());
         resultHistogram.setLines(resultHistogram.getLines() + addedHistogram.getLines());
-    }
-
-    public static void validateDirectoryInput(String rootDirectory, String fileExtension) throws IllegalArgumentException {
-        if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
-            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is null.");
-        }
-        if(rootDirectory.isBlank() || fileExtension.isBlank()){
-            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is empty.");
-        }
-        Path rootPath = Paths.get(rootDirectory);
-        if(!Files.exists(rootPath)){
-            throw new IllegalArgumentException("Root directory of ParseDirectory does not exist.");
-        }
-        if(!Files.isDirectory(rootPath)){
-            throw new IllegalArgumentException("Root directory of ParseDirectory is not a directory");
-        }
     }
 }

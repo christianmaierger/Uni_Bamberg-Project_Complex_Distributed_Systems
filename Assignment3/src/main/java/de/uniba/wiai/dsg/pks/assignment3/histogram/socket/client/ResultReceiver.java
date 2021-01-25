@@ -1,6 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 
 
+import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
 
 import java.io.ObjectInputStream;
@@ -23,7 +24,11 @@ public class ResultReceiver implements Callable<ReturnResult> {
         while(true){
             try{
                 Object object = in.readObject();
-                return (ReturnResult) object;
+                if (object instanceof ReturnResult){
+                    return (ReturnResult) object;
+                } else {
+                    throw new HistogramServiceException("Unexpected message type.");
+                }
             } catch (SocketTimeoutException exception){
                 if (Thread.currentThread().isInterrupted()) {
                     throw new InterruptedException("Execution has been interrupted.");

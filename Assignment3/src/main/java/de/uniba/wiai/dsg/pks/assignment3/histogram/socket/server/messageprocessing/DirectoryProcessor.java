@@ -2,9 +2,8 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocess
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServerException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.DirectoryUtils;
+import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryUtils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 
 import net.jcip.annotations.ThreadSafe;
@@ -32,8 +31,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
     }
 
     @Override
-    public Histogram call() throws InterruptedException, IOException {
-            DirectoryUtils.validateDirectoryInput(parseDirectory.getPath(), parseDirectory.getFileExtension());
+    public Histogram call() throws Exception {
             Histogram histogram = new Histogram();
             Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
             if(cachedHistogram.isPresent()){

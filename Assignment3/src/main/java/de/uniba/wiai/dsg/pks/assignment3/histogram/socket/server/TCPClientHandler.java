@@ -33,30 +33,29 @@ public class TCPClientHandler implements ClientHandler {
     @Override
     public void run() {
         printToOut("Connection established to a new client.");
-        try (ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())) {
+        try (ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
             out.flush();
-            try (ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream())) {
-                clientSocket.setSoTimeout(1000);
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        Object object = in.readObject();
-                        if (object instanceof ParseDirectory) {
-                            printToOut("Received a message: parse request.");
-                            process((ParseDirectory) object);
-                        } else if (object instanceof GetResult) {
-                            printToOut("Received a message: result request.");
-                            ResultCalculator resultCalculator = new ResultCalculator(out, this, number);
-                            threadPool.submit(resultCalculator);
-                        } else if (object instanceof TerminateConnection) {
-                            printToOut("Received a message: Client terminated connection.");
-                            process((TerminateConnection) object);
-                        } else {
-                            //TODO: Dieser Printout ist evtl nicht nötig, je nachdem wann die ClassNotFoundEx feuert..?
-                            printToErr("Received a message: Unknown message type. Message was ignored.");
-                        }
-                    } catch (SocketTimeoutException exception) {
-                        continue;
+            clientSocket.setSoTimeout(1000);
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Object object = in.readObject();
+                    if (object instanceof ParseDirectory) {
+                        printToOut("Received a message: parse request.");
+                        process((ParseDirectory) object);
+                    } else if (object instanceof GetResult) {
+                        printToOut("Received a message: result request.");
+                        ResultCalculator resultCalculator = new ResultCalculator(out, this, number);
+                        threadPool.submit(resultCalculator);
+                    } else if (object instanceof TerminateConnection) {
+                        printToOut("Received a message: Client terminated connection.");
+                        process((TerminateConnection) object);
+                    } else {
+                        //TODO: Dieser Printout ist evtl nicht nötig, je nachdem wann die ClassNotFoundEx feuert..?
+                        printToErr("Received a message: Unknown message type. Message was ignored.");
                     }
+                } catch (SocketTimeoutException exception) {
+                    continue;
                 }
             }
         } catch (IOException ioException) {

@@ -31,7 +31,7 @@ public class SocketHistogramService implements HistogramService {
 
     @Override
     public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-        DirectoryUtils.validateDirectoryInput(rootDirectory, fileExtension);
+        validateInput(rootDirectory, fileExtension);
         ReturnResult resultMessage;
         try (Socket server = new Socket()) {
             SocketAddress serverAddress = new InetSocketAddress(hostname, port);
@@ -151,6 +151,22 @@ public class SocketHistogramService implements HistogramService {
         } catch (InterruptedException ie) {
             executorService.shutdownNow();
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void validateInput(String rootDirectory, String fileExtension) throws IllegalArgumentException {
+        if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is null.");
+        }
+        if(rootDirectory.isBlank() || fileExtension.isBlank()){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is empty.");
+        }
+        Path rootPath = Paths.get(rootDirectory);
+        if(!Files.exists(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory does not exist.");
+        }
+        if(!Files.isDirectory(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory is not a directory");
         }
     }
 }

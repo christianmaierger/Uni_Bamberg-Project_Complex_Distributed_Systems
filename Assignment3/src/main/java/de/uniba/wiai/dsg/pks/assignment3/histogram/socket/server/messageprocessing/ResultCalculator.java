@@ -4,7 +4,6 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocess
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnection;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
