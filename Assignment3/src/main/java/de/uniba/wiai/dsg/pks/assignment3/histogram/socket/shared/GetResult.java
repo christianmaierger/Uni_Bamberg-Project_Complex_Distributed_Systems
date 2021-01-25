@@ -1,7 +1,12 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
-public class GetResult {
+import java.io.Serializable;
 
-	// TODO: implement immutable message class
+public final class GetResult implements Serializable {
+    private static final long serialVersionUID = 1L;
 
+    @Override
+    public String toString() {
+        return "GetResult";
+    }
 }
