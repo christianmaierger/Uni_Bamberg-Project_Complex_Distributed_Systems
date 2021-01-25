@@ -19,13 +19,11 @@ public class ResultReceiver implements Callable<ReturnResult> {
 
     @Override
     public ReturnResult call() throws Exception {
+        server.setSoTimeout(100);
         while(true){
             try{
-                ReturnResult result;
-                server.setSoTimeout(100);
                 Object object = in.readObject();
-                result = (ReturnResult) object;
-                return result;
+                return (ReturnResult) object;
             } catch (SocketTimeoutException exception){
                 if (Thread.currentThread().isInterrupted()) {
                     throw new InterruptedException("Execution has been interrupted.");

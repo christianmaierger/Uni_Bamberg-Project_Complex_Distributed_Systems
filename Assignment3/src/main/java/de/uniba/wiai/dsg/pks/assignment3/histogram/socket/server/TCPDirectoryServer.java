@@ -89,6 +89,8 @@ public class TCPDirectoryServer implements DirectoryServer {
                 // TODO: Meistens ist ja dann der socket kaputt --> doch eher shutdown?
                 System.err.println("DirectoryServer:\tException occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
                 createNewServerSocket();
+                //TODO: Frage an Tut: sollen wir uns auch um so etwas wie reconnection nach einem absturz kümmern?
+                // Also z.B. soll, wenn der ClientHandler abtürzt oder null zurückgibt, der Client eine neue Anfrage starten?
             }
         }
     }

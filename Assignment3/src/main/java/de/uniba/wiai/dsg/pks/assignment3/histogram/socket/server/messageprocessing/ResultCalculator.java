@@ -9,8 +9,6 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.TerminateConnec
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
-
-
 public class ResultCalculator implements Runnable {
     private final ObjectOutputStream out;
     private final TCPClientHandler clientHandler;
@@ -26,8 +24,10 @@ public class ResultCalculator implements Runnable {
     public void run() {
         ReturnResult result = clientHandler.process(new GetResult());
         try {
-            out.writeObject(result);
-            out.flush();
+            if(!Thread.currentThread().isInterrupted()){
+                out.writeObject(result);
+                out.flush();
+            }
         } catch (IOException exception) {
             System.err.println("ClientHandler #" + number + ":\tIOException: " + exception.getMessage() + ".");
             clientHandler.process(new TerminateConnection());

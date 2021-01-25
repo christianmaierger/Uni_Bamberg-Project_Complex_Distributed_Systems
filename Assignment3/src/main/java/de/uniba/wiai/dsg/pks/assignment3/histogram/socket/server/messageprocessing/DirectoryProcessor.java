@@ -32,8 +32,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
     }
 
     @Override
-    public Histogram call() throws DirectoryServerException{
-        try {
+    public Histogram call() throws InterruptedException, IOException {
             DirectoryUtils.validateDirectoryInput(parseDirectory.getPath(), parseDirectory.getFileExtension());
             Histogram histogram = new Histogram();
             Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
@@ -46,9 +45,6 @@ public class DirectoryProcessor implements Callable<Histogram> {
             }
             parentClientHandler.addToHistogram(histogram);
             return histogram;
-        } catch (InterruptedException | IOException exception){
-            throw new DirectoryServerException(exception.getMessage(), exception.getCause());
-        }
     }
 
     private void checkForInterrupt() throws InterruptedException {
@@ -80,8 +76,6 @@ public class DirectoryProcessor implements Callable<Histogram> {
         long[] distribution = DirectoryUtils.countLetters(lines);
         histogram.setDistribution(DirectoryUtils.sumUpDistributions(distribution, histogram.getDistribution()));
     }
-
-
 }
 
 

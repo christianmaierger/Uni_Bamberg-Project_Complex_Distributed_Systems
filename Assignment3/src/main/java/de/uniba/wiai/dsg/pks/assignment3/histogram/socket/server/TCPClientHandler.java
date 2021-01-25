@@ -56,15 +56,20 @@ public class TCPClientHandler implements ClientHandler {
 					} else if (object instanceof TerminateConnection) {
 						System.out.println("Client terminated connection.");
 						process((TerminateConnection) object);
+					} else {
+						System.out.println("Unknown message type. Message was ignored.");
 					}
 				}
 			}
-		} catch (IOException | ClassNotFoundException exception) {
-			System.err.println("ClientHandler #" + number + ":\tException: l. 64" + exception.getMessage() + ".");
-		} finally {
-			System.out.println("ClientHandler #" + number + ":\tInitiate shutdown.");
+		} catch (IOException ioException) {
+			//TODO: Wann kann die hier überhaupt geworfen werden? Dann ist ja eigentlich der Stream im Arsch, oder? --> shutdown
+			System.err.println("ClientHandler #" + number + ":\tIOException: " + ioException.getMessage() + ".");
+		} catch (ClassNotFoundException classNotFoundException){
+			//TODO: Wann kann die hier überhaupt geworfen werden? Selbst mit der unbekannten Klasse Test passiert das nicht...
+			System.err.println("ClientHandler #" + number + ":\tClassNotFoundException: " + classNotFoundException.getMessage() + ".");
+		}
+		finally {
 			shutdownAndAwaitTermination();
-			System.out.println("ClientHandler #" + number + ":\tShutdown completed.");
 		}
 	}
 
@@ -83,8 +88,15 @@ public class TCPClientHandler implements ClientHandler {
 			} catch (InterruptedException exception){
 				shutdownAndAwaitTermination();
 			} catch (ExecutionException exception) {
-				System.err.println("ClientHandler  #" + number + ":\tException l. 88 - " + exception.getMessage());
-				return null;
+				if(exception.getCause() instanceof InterruptedException){
+					shutdownAndAwaitTermination();
+				} else {
+					System.err.println("ClientHandler  #" + number + ":\tException in DirectoryProcessor: " + exception.getMessage());
+					System.err.println("ClientHandler  #" + number + ":\tResult is corrupt. Null is sent to client instead of ReturnResult.");
+					return null;
+					//TODO: macht das sinn? Return null, weil hier zwangsweise etwas zurückgegeben werden muss und
+					// es nach einem IO Fehler keine Möglichkeit mehr gibt, ein korrektes Histogramm zurückzugeben.
+				}
 			}
 		}
 		return new ReturnResult(this.histogram);
@@ -99,26 +111,30 @@ public class TCPClientHandler implements ClientHandler {
 		try{
 			semaphore.acquire();
 			DirectoryUtils.addUpAllFields(this.histogram, inputHistogram);
-		} finally	{
+		} finally {
 			semaphore.release();
 		}
 	}
 
 	private void shutdownAndAwaitTermination() {
+		System.out.println("ClientHandler #" + number + ":\tInitiate shutdown.");
 		this.running = false;
 		parentServer.disconnect(this);
 		threadPool.shutdown();
 		try {
 			if (!threadPool.awaitTermination(50, TimeUnit.MILLISECONDS)) {
 				threadPool.shutdownNow();
-				if (!threadPool.awaitTermination(5, TimeUnit.SECONDS))
+				if (!threadPool.awaitTermination(10, TimeUnit.SECONDS)) {
 					System.err.println("ClientHandler  #" + number + ":\tThreadPool did not terminate.");
+				} else{
+					System.out.println("ClientHandler #" + number + ":\tShutdown completed.");
+				}
+			} else{
+				System.out.println("ClientHandler #" + number + ":\tShutdown completed.");
 			}
 		} catch (InterruptedException ie) {
 			threadPool.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
 	}
-
-
 }

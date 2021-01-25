@@ -52,7 +52,6 @@ public class SocketHistogramService implements HistogramService {
         }
     }
 
-
     @Override
     public String toString() {
         return "SocketHistogramService";
