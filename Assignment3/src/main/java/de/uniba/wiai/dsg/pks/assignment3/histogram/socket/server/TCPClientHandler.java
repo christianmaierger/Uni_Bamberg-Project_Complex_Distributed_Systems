@@ -86,6 +86,8 @@ public class TCPClientHandler implements ClientHandler {
 					TerminateConnection terminateMessage = (TerminateConnection) object;
 					process(terminateMessage);
 					running = false;
+				} else {
+					System.err.println("SERVER: MessegeClass is not known");
 				}
 			}
 

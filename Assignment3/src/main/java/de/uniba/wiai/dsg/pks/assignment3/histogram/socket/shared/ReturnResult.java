@@ -7,9 +7,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @Immutable
-public class ReturnResult implements Serializable {
+public final class ReturnResult implements Serializable {
     // TODO: implement immutable message class
-    private static final long serialVersionUID = 4L;
+    private static final long serialVersionUID = 5L;
 
     private final Histogram resultHistogram;
 
