@@ -4,23 +4,29 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing.DirectoryProcessor;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocessing.ResultCalculator;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.*;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
 
+@NotThreadSafe
 public class TCPClientHandler implements ClientHandler {
+    @GuardedBy(value = "itself")
     private final int number;
     private final Socket clientSocket;
     private final DirectoryServer parentServer;
 
+    @GuardedBy(value = "semaphore")
     private final Histogram histogram = new Histogram();
-    private final List<Future<Histogram>> futureList = new ArrayList<>();
+    private final List<Future<Histogram>> futureList = new LinkedList<>();
+    @GuardedBy(value = "itself")
     private final Semaphore semaphore = new Semaphore(1, true);
     private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
@@ -90,8 +96,6 @@ public class TCPClientHandler implements ClientHandler {
                     printToErr("Exception in DirectoryProcessor: " + exception.getMessage());
                     printToErr("Result is corrupt. Null is sent to client instead of ReturnResult.");
                     return null;
-                    //TODO: macht das sinn? Return null, weil hier zwangsweise etwas zurückgegeben werden muss und
-                    // es nach einem IO Fehler keine Möglichkeit mehr gibt, ein korrektes Histogramm zurückzugeben.
                 }
             }
         }
@@ -110,6 +114,10 @@ public class TCPClientHandler implements ClientHandler {
         } finally {
             semaphore.release();
         }
+    }
+
+    public int getNumber(){
+        return number;
     }
 
     private void shutdownAndAwaitTermination() {

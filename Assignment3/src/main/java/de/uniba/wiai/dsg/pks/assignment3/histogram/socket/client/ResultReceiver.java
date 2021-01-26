@@ -3,12 +3,14 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client;
 
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.Callable;
 
+@NotThreadSafe
 public class ResultReceiver implements Callable<ReturnResult> {
     private final ObjectInputStream in;
     private final Socket server;

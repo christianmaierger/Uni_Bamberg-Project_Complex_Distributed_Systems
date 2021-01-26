@@ -6,7 +6,8 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandle
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryUtils;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 
-import net.jcip.annotations.ThreadSafe;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -14,12 +15,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
-@ThreadSafe
+@NotThreadSafe
 public class DirectoryProcessor implements Callable<Histogram> {
-
+    @GuardedBy(value = "itself")
     private final ParseDirectory parseDirectory;
     private final DirectoryServer parentServer;
     private final TCPClientHandler parentClientHandler;
@@ -32,6 +34,7 @@ public class DirectoryProcessor implements Callable<Histogram> {
 
     @Override
     public Histogram call() throws Exception {
+            validateInput(parseDirectory.getPath(), parseDirectory.getFileExtension());
             Histogram histogram = new Histogram();
             Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
             if(cachedHistogram.isPresent()){
@@ -73,6 +76,22 @@ public class DirectoryProcessor implements Callable<Histogram> {
         List<String> lines = DirectoryUtils.getFileAsLines(path);
         long[] distribution = DirectoryUtils.countLetters(lines);
         histogram.setDistribution(DirectoryUtils.sumUpDistributions(distribution, histogram.getDistribution()));
+    }
+
+    private static void validateInput(String rootDirectory, String fileExtension) throws IllegalArgumentException {
+        if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is null.");
+        }
+        if(rootDirectory.isBlank() || fileExtension.isBlank()){
+            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is empty.");
+        }
+        Path rootPath = Paths.get(rootDirectory);
+        if(!Files.exists(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory does not exist.");
+        }
+        if(!Files.isDirectory(rootPath)){
+            throw new IllegalArgumentException("Root directory of ParseDirectory is not a directory");
+        }
     }
 }
 

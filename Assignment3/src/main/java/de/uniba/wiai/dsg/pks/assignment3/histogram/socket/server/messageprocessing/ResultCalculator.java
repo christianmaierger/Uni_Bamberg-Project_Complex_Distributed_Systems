@@ -4,13 +4,17 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.messageprocess
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ReturnResult;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
+@NotThreadSafe
 public class ResultCalculator implements Runnable {
     private final ObjectOutputStream out;
     private final TCPClientHandler clientHandler;
+    @GuardedBy(value = "itself")
     private final int number;
 
     public ResultCalculator(ObjectOutputStream out, TCPClientHandler clientHandler, int number){

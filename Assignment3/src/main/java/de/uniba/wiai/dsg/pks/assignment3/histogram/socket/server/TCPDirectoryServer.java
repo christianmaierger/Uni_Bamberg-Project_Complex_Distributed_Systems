@@ -2,41 +2,39 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+@ThreadSafe
 public class TCPDirectoryServer implements DirectoryServer {
     private ServerSocket serverSocket;
-    private int port;
-    //TODO: Was ist denn mit dieser Liste?
+    @GuardedBy(value="itself")
     private final List<ClientHandler> clientHandlers;
     private final ExecutorService threadPool;
+    @GuardedBy(value="itself")
     private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
     private int clientCounter;
 
     public TCPDirectoryServer() {
-        this.clientHandlers = new LinkedList<>();
+        this.clientHandlers = Collections.synchronizedList(new LinkedList<>());
         this.threadPool = Executors.newCachedThreadPool();
         this.cache = new ConcurrentHashMap<>();
         this.clientCounter = 1;
-        this.port = -1;
     }
 
     @Override
     public void start(int port) throws DirectoryServerException {
         try {
-            this.port = port;
             this.serverSocket = new ServerSocket(port);
             serverSocket.setSoTimeout(100);
             threadPool.submit(this);
@@ -49,6 +47,10 @@ public class TCPDirectoryServer implements DirectoryServer {
     @Override
     public void disconnect(ClientHandler clientHandler) {
         clientHandlers.remove(clientHandler);
+        if(clientHandler instanceof TCPClientHandler){
+            TCPClientHandler test = (TCPClientHandler) clientHandler;
+            printToOut("Disconnected ClientHandler #" + test.getNumber() + ".");
+        }
     }
 
     @Override
@@ -85,7 +87,6 @@ public class TCPDirectoryServer implements DirectoryServer {
             } catch (IOException exception) {
                 // TODO: Meistens ist ja dann der socket kaputt --> doch eher shutdown?
                 printToErr("Exception occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
-                createNewServerSocket();
                 //TODO: Frage an Tut: sollen wir uns auch um so etwas wie reconnection nach einem absturz kümmern?
                 // Also z.B. soll, wenn der ClientHandler abtürzt oder null zurückgibt, der Client eine neue Anfrage starten?
             }
@@ -112,15 +113,6 @@ public class TCPDirectoryServer implements DirectoryServer {
         threadPool.submit(clientHandler);
         clientCounter++;
         return clientHandler;
-    }
-
-    private void createNewServerSocket(){
-        try{
-            serverSocket = new ServerSocket(port);
-        } catch (IOException exception){
-            printToErr("Unable to create new socket. New clients cannot be accepted anymore.");
-            Thread.currentThread().interrupt();
-        }
     }
 
     private void printToOut(String message){

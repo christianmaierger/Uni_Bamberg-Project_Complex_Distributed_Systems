@@ -4,6 +4,9 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramServiceException;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.*;
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
+import net.jcip.annotations.ThreadSafe;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -18,8 +21,11 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.*;
 
+@ThreadSafe
 public class SocketHistogramService implements HistogramService {
+    @GuardedBy(value = "itself")
     private final String hostname;
+    @GuardedBy(value = "itself")
     private final int port;
 
     public SocketHistogramService(String hostname, int port) {
@@ -156,17 +162,17 @@ public class SocketHistogramService implements HistogramService {
 
     private static void validateInput(String rootDirectory, String fileExtension) throws IllegalArgumentException {
         if(Objects.isNull(rootDirectory) || Objects.isNull(fileExtension)){
-            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is null.");
+            throw new IllegalArgumentException("Root directory or file extension is null.");
         }
         if(rootDirectory.isBlank() || fileExtension.isBlank()){
-            throw new IllegalArgumentException("Root directory or file extension of ParseDirectory is empty.");
+            throw new IllegalArgumentException("Root directory or file extension is empty.");
         }
         Path rootPath = Paths.get(rootDirectory);
         if(!Files.exists(rootPath)){
-            throw new IllegalArgumentException("Root directory of ParseDirectory does not exist.");
+            throw new IllegalArgumentException("Root directory does not exist.");
         }
         if(!Files.isDirectory(rootPath)){
-            throw new IllegalArgumentException("Root directory of ParseDirectory is not a directory");
+            throw new IllegalArgumentException("Root directory is not a directory");
         }
     }
 }
