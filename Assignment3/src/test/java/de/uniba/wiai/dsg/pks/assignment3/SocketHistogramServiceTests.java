@@ -1,6 +1,5 @@
-package de.uniba.wiai.dsg.pks.assignment1;
+package de.uniba.wiai.dsg.pks.assignment3;
 
-import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor.ExecutorHistogramService;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client.SocketHistogramService;
 import org.junit.jupiter.api.BeforeEach;
 

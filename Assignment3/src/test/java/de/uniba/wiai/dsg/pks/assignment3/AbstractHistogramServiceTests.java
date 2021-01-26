@@ -1,4 +1,4 @@
-package de.uniba.wiai.dsg.pks.assignment1;
+package de.uniba.wiai.dsg.pks.assignment3;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment.model.HistogramService;

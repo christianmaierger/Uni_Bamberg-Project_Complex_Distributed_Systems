@@ -43,6 +43,7 @@ public class SocketHistogramService implements HistogramService {
             SocketAddress serverAddress = new InetSocketAddress(hostname, port);
             server.connect(serverAddress);
             checkForInterrupt();
+            System.out.println("Connection to server established.");
             try (ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream())) {
                 out.flush();
                 sendDirectoryParseMessages(out, rootDirectory, fileExtension);
@@ -78,7 +79,6 @@ public class SocketHistogramService implements HistogramService {
         try {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
                 for (Path path : stream) {
-                    //Important: put this check here, so that before all file types check is performed, not only if is Directory
                     checkForInterrupt(out);
                     if (Files.isDirectory(path)) {
                         sendDirectoryParseMessages(out, path.toString(), fileExtension);
@@ -142,6 +142,7 @@ public class SocketHistogramService implements HistogramService {
 
     private void verifyResultIsValid(ReturnResult result) throws HistogramServiceException {
         if (Objects.isNull(result)) {
+            System.err.println("Null was received. A server-side error has occurred.");
             throw new HistogramServiceException("No result histogram present.");
         }
     }

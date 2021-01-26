@@ -19,6 +19,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
+/**
+ * Offers a call()-method to process and analyse a parseDirectory task asynchronously.
+ */
 @NotThreadSafe
 public class DirectoryProcessor implements Callable<Histogram> {
     @GuardedBy(value = "itself")
@@ -32,6 +35,13 @@ public class DirectoryProcessor implements Callable<Histogram> {
         this.parentClientHandler = parentClientHandler;
     }
 
+    /**
+     * Determines the Histogram of the directory saved in the instance variable parseDirectory, either by requesting a
+     * cached result from its parentServer or by calculating it. A calculated Histogram will be sent to the parentServer
+     * to cache it. The Histogram is then added to the Histogram of the parentClientHandler.
+     * @return the resulting Histogram after inspecting the directory in this.parseDirectory
+     * @throws Exception if IOExceptions or InterruptedExceptions happen during the calculation
+     */
     @Override
     public Histogram call() throws Exception {
             validateInput(parseDirectory.getPath(), parseDirectory.getFileExtension());

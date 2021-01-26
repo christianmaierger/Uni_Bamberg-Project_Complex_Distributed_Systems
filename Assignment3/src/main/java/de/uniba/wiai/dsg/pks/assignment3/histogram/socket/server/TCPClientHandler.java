@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
 
+
 @NotThreadSafe
 public class TCPClientHandler implements ClientHandler {
     @GuardedBy(value = "itself")
@@ -36,6 +37,11 @@ public class TCPClientHandler implements ClientHandler {
         this.number = number;
     }
 
+    /**
+     * Receives messages from a Client and delegates them to the other methods of the interface of this class.
+     * Processing and receiving messages is separated so that this method can always receive new messages and does
+     * not block.
+     */
     @Override
     public void run() {
         printToOut("Connection established to a new client.");
@@ -57,7 +63,6 @@ public class TCPClientHandler implements ClientHandler {
                         printToOut("Received a message: Client terminated connection.");
                         process((TerminateConnection) object);
                     } else {
-                        //TODO: Dieser Printout ist evtl nicht nötig, je nachdem wann die ClassNotFoundEx feuert..?
                         printToErr("Received a message: Unknown message type. Message was ignored.");
                     }
                 } catch (SocketTimeoutException exception) {
@@ -65,11 +70,10 @@ public class TCPClientHandler implements ClientHandler {
                 }
             }
         } catch (IOException ioException) {
-            //TODO: Wann kann die hier überhaupt geworfen werden? Dann ist ja eigentlich der Stream im Arsch, oder? --> shutdown
             printToErr("IOException: " + ioException.getMessage() + ".");
         } catch (ClassNotFoundException classNotFoundException) {
-            //TODO: Wann kann die hier überhaupt geworfen werden? Selbst mit der unbekannten Klasse Test passiert das nicht...
             printToErr("ClassNotFoundException: " + classNotFoundException.getMessage() + ".");
+            printToErr("Result is probably corrupt. Connection to client is aborted.");
         } finally {
             shutdownAndAwaitTermination();
         }
@@ -107,6 +111,11 @@ public class TCPClientHandler implements ClientHandler {
         Thread.currentThread().interrupt();
     }
 
+    /**
+     * Adds the content of the given inputHistogram to this.histogram. Calls to addToHistogram are synchronised.
+     * @param inputHistogram Histogram to be added upon this.histogram
+     * @throws InterruptedException if Thread.currentThread is interrupted
+     */
     public void addToHistogram(Histogram inputHistogram) throws InterruptedException {
         try {
             semaphore.acquire();

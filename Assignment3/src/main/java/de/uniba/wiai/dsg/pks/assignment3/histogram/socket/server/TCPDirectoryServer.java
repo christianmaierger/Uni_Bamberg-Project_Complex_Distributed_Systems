@@ -3,19 +3,16 @@ package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.ThreadSafe;
+import net.jcip.annotations.NotThreadSafe;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
-@ThreadSafe
+@NotThreadSafe
 public class TCPDirectoryServer implements DirectoryServer {
     private ServerSocket serverSocket;
     @GuardedBy(value="itself")
@@ -24,6 +21,7 @@ public class TCPDirectoryServer implements DirectoryServer {
     @GuardedBy(value="itself")
     private final ConcurrentHashMap<ParseDirectory, Histogram> cache;
     private int clientCounter;
+
 
     public TCPDirectoryServer() {
         this.clientHandlers = Collections.synchronizedList(new LinkedList<>());
@@ -85,10 +83,13 @@ public class TCPDirectoryServer implements DirectoryServer {
             } catch (SocketTimeoutException timeoutException) {
                 continue;
             } catch (IOException exception) {
-                // TODO: Meistens ist ja dann der socket kaputt --> doch eher shutdown?
-                printToErr("Exception occurred while accepting new client: " + exception.getMessage() + ". Try creating a new socket.");
-                //TODO: Frage an Tut: sollen wir uns auch um so etwas wie reconnection nach einem absturz kümmern?
-                // Also z.B. soll, wenn der ClientHandler abtürzt oder null zurückgibt, der Client eine neue Anfrage starten?
+                printToErr("Exception occurred while accepting new client.");
+                Thread.currentThread().interrupt();
+                try {
+                    shutdown();
+                } catch (DirectoryServerException e) {
+                    printToErr("Exception occurred during shutdown: " + e.getMessage());
+                }
             }
         }
     }

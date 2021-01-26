@@ -10,6 +10,10 @@ import net.jcip.annotations.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
+/**
+ * This class sums up the frequency analysis of a Client and send the result to the Client
+ * via a ReturnResult message.
+ */
 @NotThreadSafe
 public class ResultCalculator implements Runnable {
     private final ObjectOutputStream out;
@@ -23,6 +27,10 @@ public class ResultCalculator implements Runnable {
         this.number = number;
     }
 
+    /**
+     * Waits until all parseDirectory tasks have been processed and summed up in a ReturnResult, which is then sent to
+     * the Client.
+     */
     @Override
     public void run() {
         ReturnResult result = clientHandler.process(new GetResult());

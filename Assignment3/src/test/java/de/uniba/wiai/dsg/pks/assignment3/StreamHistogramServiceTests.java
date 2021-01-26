@@ -1,6 +1,5 @@
-package de.uniba.wiai.dsg.pks.assignment1;
+package de.uniba.wiai.dsg.pks.assignment3;
 
-import de.uniba.wiai.dsg.pks.assignment1.histogram.sequential.SequentialHistogramService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.stream.StreamHistogramService;
 import org.junit.jupiter.api.BeforeEach;
 
