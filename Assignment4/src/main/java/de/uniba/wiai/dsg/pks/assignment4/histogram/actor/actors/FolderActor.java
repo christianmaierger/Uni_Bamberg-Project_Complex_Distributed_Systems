@@ -17,6 +17,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +38,8 @@ public class FolderActor extends AbstractActor {
    // wahrscheinlich brauchen wir auch den OutputActor
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
+    HashMap<Path, Histogram> fileHistogramMap;
+    List<Path> pathFileList = new LinkedList<>();
 
 
     public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
@@ -45,6 +49,7 @@ public class FolderActor extends AbstractActor {
         this.histogram = new Histogram();
         // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
         this.projectActor=projectActor;
+        this.fileHistogramMap = new HashMap<>();
     }
 
 
@@ -76,7 +81,7 @@ public class FolderActor extends AbstractActor {
         // jetzt sind wir fertig mit einem file
         histogram = addUpAllFields(subResult, histogram);
 
-
+        filesProcessed++;
 
     }
 
@@ -128,10 +133,39 @@ public class FolderActor extends AbstractActor {
         //hier quasi Ergebniss zurücksenden und Folder aufzählen, weil final fertig mit einem
         //parentClientHandler.addToHistogram(histogram);
 
-        histogram.setDirectories(1);
+        // ab hier eigentlich nur wenn wir echt fertig sind, also alle toPrecess processed sind!
+        //todo
 
-        // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
-         ReturnResult folderResultMessage = new ReturnResult(histogram);
+        // easy mode bissel sleepen damit alles fertig werden kann
+
+        Thread.currentThread().sleep(1000);
+
+        if (filesProcessed!=filesToProcess) {
+
+            // todo schauen was fehlt und nochmal machen lassen
+            // aber ab wann, kann ja auch einfach sein, dass die anderen noch brauchen
+            // easy abe rnicht so schön wäre ein Schläfchen, weiß aber nicht ob CompFutures ne Lösung wären,
+            // aber wäre sau wierd dass die wo anders bearbetiet und dann hier fertig werden....
+            for (Path filePath: pathFileList) {
+                if(fileHistogramMap.get(filePath)==null) {
+                    // second Processing if there was an error
+                    FileMessage secondMessage = new FileMessage(filePath);
+                    loadBalancer.tell(message, getSelf());
+                }
+
+            }
+        } else {
+            histogram.setDirectories(1);
+
+            // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
+            ReturnResult folderResultMessage = new ReturnResult(histogram);
+
+
+            projectActor.tell(folderResultMessage, getSelf());
+
+        }
+
+
     }
 
     private void checkForInterrupt() throws InterruptedException {
@@ -152,11 +186,16 @@ public class FolderActor extends AbstractActor {
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
 
+                        // aufzählen wie viele zu verarbeiten sind
+                        this.filesToProcess++;
                       // hier senden
                         FileMessage message = new FileMessage(path);
                         // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
                         // denke ich bin hier aber erstmal fertig?
                      loadBalancer.tell(message, getSelf());
+
+                     // path zur pathList damit wir wissen welche paths bearbeiten sien müssen
+                        pathFileList.add(path);
 
                     }
                 }
