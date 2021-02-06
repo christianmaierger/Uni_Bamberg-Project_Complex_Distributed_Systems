@@ -31,26 +31,25 @@ public class FolderActor extends AbstractActor {
     private Histogram histogram;
    //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
    private ActorRef projectActor;
-   // wahrscheinlich brauchen wir auch den OutputActor
-    private ActorRef outputActor;
+   private ActorRef outputActor;
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
     HashMap<Path, Histogram> fileHistogramMap;
     List<Path> pathFileList = new LinkedList<>();
 
 
-    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
+    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor, ActorRef outputActor) {
         this.folder = folder;
         this.fileExtension = fileExtension;
         this.loadBalancer = loadBalancer;
         this.histogram = new Histogram();
-        // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
         this.projectActor=projectActor;
         this.fileHistogramMap = new HashMap<>();
+        this.outputActor=outputActor;
     }
 
-    static Props props(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
-        return Props.create(FolderActor.class, ()-> new FolderActor(folder, fileExtension, loadBalancer, projectActor));
+    static Props props(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor, ActorRef outputActor) {
+        return Props.create(FolderActor.class, ()-> new FolderActor(folder, fileExtension, loadBalancer, projectActor, outputActor));
     }
 
 
@@ -64,6 +63,8 @@ public class FolderActor extends AbstractActor {
                 // die reagieren in Ihrem recieve BUilder darauf?
                 .match(ParseDirectory.class, this::calculateFolderHistogram)
                 .match(ReturnResult.class, this::proccessFileResults)
+                // hier könnte man auch ex anch oben propagieren
+                .matchAny(any -> System.out.println("Unknown Message: " + any))
                 .build();
 
     }
@@ -169,12 +170,24 @@ public class FolderActor extends AbstractActor {
 
     }
 
+
+    // denke das machen wir nicht mehr!
     private void checkForInterrupt() throws InterruptedException {
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException("Execution has been interrupted.");
         }
     }
 
+
+    // dass kann doch jetzt eh nimmer interupted werden?
+
+    /**
+     *
+     *
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
     private void processFiles() throws IOException, InterruptedException {
         Path folderPath = Paths.get(folder);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {

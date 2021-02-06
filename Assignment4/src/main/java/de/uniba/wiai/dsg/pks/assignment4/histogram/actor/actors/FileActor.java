@@ -29,6 +29,8 @@ public class FileActor extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(FileMessage.class, this::processFile)
+                // hier könnte man auch ex anch oben propagieren
+				.matchAny(any -> System.out.println("Unknown Message: " + any))
                 .build();
     }
 
