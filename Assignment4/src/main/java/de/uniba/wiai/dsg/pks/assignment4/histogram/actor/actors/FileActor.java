@@ -2,7 +2,9 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ExeptionMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -24,14 +26,18 @@ public class FileActor extends AbstractActor {
 
     private <P> void processFile(FileMessage message) {
        Path filePath= message.getPath();
-       // fraglich ob neues hist ok, oder vielleicht das aus FolderActor?
+       // sollte passen mit neuem
         Histogram histogram = new Histogram();
 
         //todo ex handling
         try {
             processFileContent(filePath, histogram);
         } catch (IOException e) {
-            e.printStackTrace();
+           // todo
+            // entweder hier oder gleich in der Methode?
+            //IO scheint mir einzige Ex in der Klasse zu sein?
+            ExeptionMessage exeptionMessage = new ExeptionMessage(e, filePath);
+            // problem, der kennt seinen FolderActor nicht, müsste der loadbalancer dem forwarden
         }
     }
 
@@ -39,7 +45,10 @@ public class FileActor extends AbstractActor {
         histogram.setLines(histogram.getLines() + getLinesPerFile(path));
         List<String> lines = getFileAsLines(path);
         long[] distribution = countLetters(lines);
+        // todo zürickschicken
         histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
+        ReturnResult fileResult = new ReturnResult(histogram);
+        //to kennt ja dessen FolderActor nicht, muss loadbalancer ihm forwarden
     }
 
     /**

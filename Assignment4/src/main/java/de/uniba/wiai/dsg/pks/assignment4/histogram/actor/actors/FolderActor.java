@@ -2,11 +2,7 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.japi.pf.ReceiveBuilder;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
@@ -20,7 +16,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 public class FolderActor extends AbstractActor {
 
@@ -36,6 +31,7 @@ public class FolderActor extends AbstractActor {
    //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
    private ActorRef projectActor;
    // wahrscheinlich brauchen wir auch den OutputActor
+    private ActorRef outputActor;
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
     HashMap<Path, Histogram> fileHistogramMap;
@@ -149,7 +145,7 @@ public class FolderActor extends AbstractActor {
             for (Path filePath: pathFileList) {
                 if(fileHistogramMap.get(filePath)==null) {
                     // second Processing if there was an error
-                    FileMessage secondMessage = new FileMessage(filePath);
+                    FileMessage secondMessage = new FileMessage(filePath, getSelf(), outputActor);
                     loadBalancer.tell(message, getSelf());
                 }
 
@@ -189,7 +185,7 @@ public class FolderActor extends AbstractActor {
                         // aufzählen wie viele zu verarbeiten sind
                         this.filesToProcess++;
                       // hier senden
-                        FileMessage message = new FileMessage(path);
+                        FileMessage message = new FileMessage(path, getSelf(), outputActor);
                         // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
                         // denke ich bin hier aber erstmal fertig?
                      loadBalancer.tell(message, getSelf());
