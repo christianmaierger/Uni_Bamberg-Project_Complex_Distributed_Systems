@@ -1,7 +1,15 @@
 package de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared;
 
-public class TerminateConnection {
+import net.jcip.annotations.Immutable;
 
-	// TODO: implement immutable message class
+import java.io.Serializable;
 
+@Immutable
+public final class TerminateConnection implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public String toString(){
+        return "TerminateConnection";
+    }
 }

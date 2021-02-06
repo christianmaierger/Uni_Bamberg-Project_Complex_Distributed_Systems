@@ -2,6 +2,7 @@ package de.uniba.wiai.dsg.pks.assignment.model;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Formatter;
 
 /**
  * Represents a histogram, i.e., a distribution of used alphabetical letters and
@@ -104,5 +105,17 @@ public class Histogram implements Serializable {
 		if (lines != other.lines)
 			return false;
 		return true;
+	}
+
+	@Override
+	public String toString(){
+		StringBuilder stringBuilder = new StringBuilder();
+		Formatter formatter = new Formatter(stringBuilder);
+		formatter.format("[distr = %s, ", Arrays.toString(distribution));
+		formatter.format("lines=%d, ", lines);
+		formatter.format("files=%d, ", files);
+		formatter.format("processedFiles=%d, ", processedFiles);
+		formatter.format("directories=%d]", directories);
+		return stringBuilder.toString();
 	}
 }

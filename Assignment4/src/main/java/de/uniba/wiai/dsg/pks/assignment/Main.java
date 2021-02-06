@@ -12,8 +12,6 @@ import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.executor.ExecutorHis
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.forkjoin.ForkJoinHistogramService;
 import de.uniba.wiai.dsg.pks.assignment2.histogram.threaded.stream.StreamHistogramService;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.client.SocketHistogramService;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.ActorHistogramService;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.completable.CompletableHistogramService;
 import javafx.application.Application;
 
 import java.util.ArrayList;
@@ -55,9 +53,9 @@ public class Main {
 		// assignment 3
 		serviceMap.putIfAbsent(Service.SOCKET, new SocketHistogramService("localhost", 1337));
 
-		// assignment 4
-		serviceMap.putIfAbsent(Service.COMPLETABLE, new CompletableHistogramService());
-		serviceMap.putIfAbsent(Service.ACTOR, new ActorHistogramService());
+//		// assignment 4
+//		serviceMap.putIfAbsent(Service.COMPLETABLE, new CompletableHistogramService());
+//		serviceMap.putIfAbsent(Service.ACTOR, new ActorHistogramService());
 	}
 
 	public static void main(String[] args) {
