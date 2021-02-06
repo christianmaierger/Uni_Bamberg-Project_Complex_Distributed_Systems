@@ -1,6 +1,8 @@
 package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
+import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ExeptionMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
@@ -15,6 +17,12 @@ import java.util.stream.Stream;
 
 public class FileActor extends AbstractActor {
 
+
+
+
+    static Props props() {
+        return Props.create(FileActor.class, ()-> new FileActor());
+    }
 
 
     @Override

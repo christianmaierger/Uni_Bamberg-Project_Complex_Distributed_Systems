@@ -2,6 +2,7 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
+import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
@@ -46,6 +47,10 @@ public class FolderActor extends AbstractActor {
         // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
         this.projectActor=projectActor;
         this.fileHistogramMap = new HashMap<>();
+    }
+
+    static Props props(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
+        return Props.create(FolderActor.class, ()-> new FolderActor(folder, fileExtension, loadBalancer, projectActor));
     }
 
 
