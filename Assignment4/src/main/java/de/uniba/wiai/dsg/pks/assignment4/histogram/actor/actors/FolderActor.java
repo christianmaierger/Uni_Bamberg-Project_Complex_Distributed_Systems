@@ -8,6 +8,7 @@ import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
 
 
@@ -30,18 +31,20 @@ public class FolderActor extends AbstractActor {
     // checke noch nicht, wie ich mit dem loadBalancer bzw dessen gemanagten FileActors umgehen soll
     private final ActorRef loadBalancer;
     private Histogram histogram;
-   //brauchen wir den project actor vielleicht?
-   // private ActorRef projectActor;
+   //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
+   private ActorRef projectActor;
    // wahrscheinlich brauchen wir auch den OutputActor
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
 
 
-    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer) {
+    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
         this.folder = folder;
         this.fileExtension = fileExtension;
         this.loadBalancer = loadBalancer;
         this.histogram = new Histogram();
+        // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
+        this.projectActor=projectActor;
     }
 
 
@@ -69,7 +72,10 @@ public class FolderActor extends AbstractActor {
 
         Histogram subResult = fileResult.getHistogram();
 
+
+        // jetzt sind wir fertig mit einem file
         histogram = addUpAllFields(subResult, histogram);
+
 
 
     }
@@ -116,13 +122,15 @@ public class FolderActor extends AbstractActor {
        //     histogram = cachedHistogram.get();
       //  } else {
             processFiles();
-            histogram.setDirectories(1);
 
 
-        //hier quasi Ergebniss zurücksenden
+
+        //hier quasi Ergebniss zurücksenden und Folder aufzählen, weil final fertig mit einem
         //parentClientHandler.addToHistogram(histogram);
 
-        // histogram hier dann an ProjectActor schicken
+        histogram.setDirectories(1);
+
+        // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
          ReturnResult folderResultMessage = new ReturnResult(histogram);
     }
 
@@ -145,7 +153,10 @@ public class FolderActor extends AbstractActor {
                     if (fileExtensionCorrect) {
 
                       // hier senden
-                      //  processFileContent(path, histogram);
+                        FileMessage message = new FileMessage(path);
+                        // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
+                        // denke ich bin hier aber erstmal fertig?
+                     loadBalancer.tell(message, getSelf());
 
                     }
                 }

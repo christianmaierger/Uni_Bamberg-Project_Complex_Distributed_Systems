@@ -18,6 +18,11 @@ public class ActorHistogramService implements HistogramService {
 	}
 
 	@Override
+	public void setIoExceptionThrown(boolean value) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public String toString() {
 		return getClass().getSimpleName();
 	}
