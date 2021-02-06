@@ -22,4 +22,11 @@ public class ActorHistogramService implements HistogramService {
 		return getClass().getSimpleName();
 	}
 
+	/**
+	 * Unneeded legacy method from Assignment 1.
+	 */
+	@Override
+	public void setIoExceptionThrown(boolean value) {
+		throw new UnsupportedOperationException();
+	}
 }
