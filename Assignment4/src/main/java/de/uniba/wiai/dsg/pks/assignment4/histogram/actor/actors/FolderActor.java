@@ -2,11 +2,8 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.japi.pf.ReceiveBuilder;
+import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
 import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
@@ -20,7 +17,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 public class FolderActor extends AbstractActor {
 
@@ -33,23 +29,27 @@ public class FolderActor extends AbstractActor {
     // checke noch nicht, wie ich mit dem loadBalancer bzw dessen gemanagten FileActors umgehen soll
     private final ActorRef loadBalancer;
     private Histogram histogram;
-   //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
-   private ActorRef projectActor;
-   // wahrscheinlich brauchen wir auch den OutputActor
+    //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
+    private ActorRef projectActor;
+    private ActorRef outputActor;
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
     HashMap<Path, Histogram> fileHistogramMap;
     List<Path> pathFileList = new LinkedList<>();
 
 
-    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
+    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor, ActorRef outputActor) {
         this.folder = folder;
         this.fileExtension = fileExtension;
         this.loadBalancer = loadBalancer;
         this.histogram = new Histogram();
-        // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
         this.projectActor=projectActor;
         this.fileHistogramMap = new HashMap<>();
+        this.outputActor=outputActor;
+    }
+
+    static Props props(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor, ActorRef outputActor) {
+        return Props.create(FolderActor.class, ()-> new FolderActor(folder, fileExtension, loadBalancer, projectActor, outputActor));
     }
 
 
@@ -63,6 +63,8 @@ public class FolderActor extends AbstractActor {
                 // die reagieren in Ihrem recieve BUilder darauf?
                 .match(ParseDirectory.class, this::calculateFolderHistogram)
                 .match(ReturnResult.class, this::proccessFileResults)
+                // hier könnte man auch ex anch oben propagieren
+                .matchAny(any -> System.out.println("Unknown Message: " + any))
                 .build();
 
     }
@@ -118,15 +120,15 @@ public class FolderActor extends AbstractActor {
     // was mache ich jetzt ohne call, alles in processFilles reinstopfen denk ich, oder Übermethode!
 
     public void calculateFolderHistogram(ParseDirectory message) throws Exception {
-      // eher kein eigenes anlegen oder doch eig egal ob Feld, je nachdem wie Aggregation der Zwischenwerte erfolgt
+        // eher kein eigenes anlegen oder doch eig egal ob Feld, je nachdem wie Aggregation der Zwischenwerte erfolgt
         // ich könnte auch aus der message die hier übergeben wird was auslesen!!
         //Histogram histogram = new Histogram();
 
-       // Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
-       // if(cachedHistogram.isPresent()){
-       //     histogram = cachedHistogram.get();
-      //  } else {
-            processFiles();
+        // Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
+        // if(cachedHistogram.isPresent()){
+        //     histogram = cachedHistogram.get();
+        //  } else {
+        processFiles();
 
 
 
@@ -149,7 +151,7 @@ public class FolderActor extends AbstractActor {
             for (Path filePath: pathFileList) {
                 if(fileHistogramMap.get(filePath)==null) {
                     // second Processing if there was an error
-                    FileMessage secondMessage = new FileMessage(filePath);
+                    FileMessage secondMessage = new FileMessage(filePath, getSelf(), outputActor);
                     loadBalancer.tell(message, getSelf());
                 }
 
@@ -168,12 +170,24 @@ public class FolderActor extends AbstractActor {
 
     }
 
+
+    // denke das machen wir nicht mehr!
     private void checkForInterrupt() throws InterruptedException {
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException("Execution has been interrupted.");
         }
     }
 
+
+    // dass kann doch jetzt eh nimmer interupted werden?
+
+    /**
+     *
+     *
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
     private void processFiles() throws IOException, InterruptedException {
         Path folderPath = Paths.get(folder);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
@@ -188,13 +202,13 @@ public class FolderActor extends AbstractActor {
 
                         // aufzählen wie viele zu verarbeiten sind
                         this.filesToProcess++;
-                      // hier senden
-                        FileMessage message = new FileMessage(path);
+                        // hier senden
+                        FileMessage message = new FileMessage(path, getSelf(), outputActor);
                         // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
                         // denke ich bin hier aber erstmal fertig?
-                     loadBalancer.tell(message, getSelf());
+                        loadBalancer.tell(message, getSelf());
 
-                     // path zur pathList damit wir wissen welche paths bearbeiten sien müssen
+                        // path zur pathList damit wir wissen welche paths bearbeiten sien müssen
                         pathFileList.add(path);
 
                     }
