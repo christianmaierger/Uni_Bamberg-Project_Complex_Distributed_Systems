@@ -102,6 +102,8 @@ public class FolderActor extends AbstractActor {
         // jetzt sind wir fertig mit einem file
         histogram = addUpAllFields(subResult, histogram);
 
+        // fertigesn path mit ergebniss in hashmap legen
+        fileHistogramMap.putIfAbsent(fileResult.getFilePath(), subResult);
         filesProcessed++;
 
     }
@@ -138,7 +140,7 @@ public class FolderActor extends AbstractActor {
 
     // was mache ich jetzt ohne call, alles in processFilles reinstopfen denk ich, oder Übermethode!
 //todo neue message
-    public void calculateFolderHistogram(Object message) throws Exception {
+    public void calculateFolderHistogram(Object message)  {
       // eher kein eigenes anlegen oder doch eig egal ob Feld, je nachdem wie Aggregation der Zwischenwerte erfolgt
         // ich könnte auch aus der message die hier übergeben wird was auslesen!!
         //Histogram histogram = new Histogram();
@@ -147,8 +149,23 @@ public class FolderActor extends AbstractActor {
        // if(cachedHistogram.isPresent()){
        //     histogram = cachedHistogram.get();
       //  } else {
-            processFiles();
 
+        // io aus dem directory stream in der methode
+        try {
+            processFiles();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+          // todo würde nochmal einlesen des Folder probieren und wenn das nicht geht an projekt actor melden oder ex werfen, dass es kaputt ist?
+            try {
+                processFiles();
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+            } catch (IOException ioException) {
+               // todo jetzt retried ist kaputt und sollte propagiert werden per supervision denke ich
+
+            }
+        }
 
 
         //hier quasi Ergebniss zurücksenden und Folder aufzählen, weil final fertig mit einem
@@ -159,7 +176,11 @@ public class FolderActor extends AbstractActor {
 
         // easy mode bissel sleepen damit alles fertig werden kann
 
-        Thread.currentThread().sleep(1000);
+        try {
+            Thread.currentThread().sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         if (filesProcessed!=filesToProcess) {
 
@@ -179,7 +200,10 @@ public class FolderActor extends AbstractActor {
             histogram.setDirectories(1);
 
             // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
-            ReturnResult folderResultMessage = new ReturnResult(histogram);
+            Path folderPath = Paths.get(folder);
+
+
+            ReturnResult folderResultMessage = new ReturnResult(histogram, folderPath);
 
 
             projectActor.tell(folderResultMessage, getSelf());
@@ -207,8 +231,9 @@ public class FolderActor extends AbstractActor {
      * @throws IOException
      * @throws InterruptedException
      */
-    private void processFiles() throws IOException, InterruptedException {
+    private void processFiles() throws InterruptedException, IOException {
         Path folderPath = Paths.get(folder);
+        // io kommt hier vom directoryStream
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
                 checkForInterrupt();

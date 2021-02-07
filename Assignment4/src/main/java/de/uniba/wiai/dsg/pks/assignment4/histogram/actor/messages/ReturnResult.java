@@ -3,24 +3,37 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.Objects;
 
 public final class ReturnResult implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Histogram resultHistogram;
+    private final Path filePath;
 
-    public ReturnResult(Histogram histogram) {
+
+    public ReturnResult(Histogram histogram, Path filePath) {
         this.resultHistogram = deepCopyHistogram(histogram);
+        this.filePath = filePath;
     }
+
+
 
     public Histogram getHistogram() {
         return deepCopyHistogram(resultHistogram);
     }
 
+    public Path getFilePath() {
+        return filePath;
+    }
+
     @Override
     public String toString() {
-        return "ReturnResult[histogram = " + resultHistogram.toString() + "]";
+        return "ReturnResult{" +
+                "resultHistogram=" + resultHistogram +
+                ", filePath=" + filePath +
+                '}';
     }
 
     private Histogram deepCopyHistogram(Histogram histogram){

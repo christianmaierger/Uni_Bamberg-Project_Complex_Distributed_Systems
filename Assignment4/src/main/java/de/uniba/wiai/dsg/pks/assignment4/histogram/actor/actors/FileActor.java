@@ -48,6 +48,7 @@ public class FileActor extends AbstractActor {
             //IO scheint mir einzige Ex in der Klasse zu sein?
             ExeptionMessage exeptionMessage = new ExeptionMessage(e, filePath);
             // problem, der kennt seinen FolderActor nicht, müsste der loadbalancer dem forwarden
+            getSender().tell(exeptionMessage, getSelf());
         }
     }
 
@@ -57,8 +58,9 @@ public class FileActor extends AbstractActor {
         long[] distribution = countLetters(lines);
         // todo zürickschicken
         histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
-        ReturnResult fileResult = new ReturnResult(histogram);
+        ReturnResult fileResult = new ReturnResult(histogram, path);
         //to kennt ja dessen FolderActor nicht, muss loadbalancer ihm forwarden
+        getSender().tell(fileResult, getSelf());
     }
 
     /**
