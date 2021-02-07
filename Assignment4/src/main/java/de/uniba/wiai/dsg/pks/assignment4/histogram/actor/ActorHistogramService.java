@@ -25,7 +25,8 @@ public class ActorHistogramService implements HistogramService {
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
 		ActorSystem actorSystem = ActorSystem.create();
-		ActorRef projectActor = actorSystem.actorOf(ProjectActor.props(rootDirectory, fileExtension));
+		ActorRef projectActor = actorSystem.actorOf(ProjectActor.props(rootDirectory, fileExtension), "ProjectActor");
+		projectActor.tell(new Histogram(), ActorRef.noSender());
 		CompletableFuture<Object> future =
 				Patterns.ask(projectActor, new HistogramRequest(), Duration.ofSeconds(30)).toCompletableFuture();
 		try{

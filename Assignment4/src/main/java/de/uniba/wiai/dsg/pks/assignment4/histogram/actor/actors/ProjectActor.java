@@ -6,9 +6,7 @@ import akka.actor.Props;
 import akka.routing.ActorRefRoutee;
 import akka.routing.Routee;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ParseDirectory;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.HistogramRequest;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.*;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -23,6 +21,7 @@ public class ProjectActor extends AbstractActor {
     private final String rootDirectory;
     private final String fileExtension;
     private ActorRef loadBalancer;
+    private ActorRef outputActor;
     private final Histogram histogram = new Histogram();
 
     public ProjectActor(String rootDirectory, String fileExtension){
@@ -51,7 +50,8 @@ public class ProjectActor extends AbstractActor {
             ActorRef fileActor = getContext().actorOf(FileActor.props());
             routees.add(new ActorRefRoutee(fileActor));
         }
-        this.loadBalancer = getContext().actorOf(LoadBalancer.props(routees));
+        this.loadBalancer = getContext().actorOf(LoadBalancer.props(routees), "LoadBalancer");
+        this.outputActor = getContext().actorOf(OutputActor.props(), "OutputActor");
     }
 
     //TODO: Take care of exception here
@@ -84,18 +84,19 @@ public class ProjectActor extends AbstractActor {
         this.pendingFolderActors--;
         if(pendingFolderActors == 0){
             getSender().tell(new ReturnResult(this.histogram), getSelf());
+            outputActor.tell(new LogMessage(this.histogram, this.rootDirectory, LogMessageType.PROJECT), getSelf());
         }
     }
 
     private void handleUnknownMessage(Object unknownMessage){
-        //TODO add handling
+        UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
+        outputActor.tell(message, getSelf());
     }
 
     private void startFolderActor(String directory, int actorNumber){
-        //TODO: add real output actor
-        ActorRef output = getContext().actorOf(Props.create(OutputActor.class));
-        Props folderActorProps = FolderActor.props(directory, fileExtension, loadBalancer, getSelf(), output);
-        ActorRef folderActor = getContext().actorOf(folderActorProps, "FolderActor#" + actorNumber);
+        Props folderActorProps = FolderActor.props(directory, fileExtension, loadBalancer, getSelf(), outputActor);
+        ActorRef folderActor = getContext().actorOf(folderActorProps, "FolderActor" + actorNumber);
+        //TODO: Welche Nachricht hier in FolderActor schicken klären!
         folderActor.tell(new ParseDirectory(directory, fileExtension), getSelf());
     }
 }

@@ -4,7 +4,7 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ExeptionMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
 
@@ -35,6 +35,7 @@ public class FolderActor extends AbstractActor {
 
     // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
     HashMap<Path, Histogram> fileHistogramMap;
+    List<Path> retriedPathList = new LinkedList<>();
     List<Path> pathFileList = new LinkedList<>();
 
 
@@ -53,7 +54,8 @@ public class FolderActor extends AbstractActor {
     }
 
 
-
+    //FIXME: evtl hier doch lieber outputActor und loadBalances am Anfang einmal übergeben und danach die parseDir message?
+    // Entspricht dem, wie wir es bei Ping/Pong in der Übung gemacht haben?
     @Override
     public Receive createReceive() {
         return receiveBuilder()
@@ -61,11 +63,29 @@ public class FolderActor extends AbstractActor {
                 // und ich muss die histograme der einzelnen FIleActors entgegen nehmen
                 // sonst brauch ich eigentlich nix, warum nicht ungefragt wenn fertig die Ergebnisse an den OutPutActor und ProjectActor eifnach senden und
                 // die reagieren in Ihrem recieve BUilder darauf?
-                .match(ParseDirectory.class, this::calculateFolderHistogram)
+                //todo neue start message
+                //  .match(.class, this::calculateFolderHistogram)
                 .match(ReturnResult.class, this::proccessFileResults)
+                .match(ExeptionMessage.class, this::handleException)
                 // hier könnte man auch ex anch oben propagieren
                 .matchAny(any -> System.out.println("Unknown Message: " + any))
                 .build();
+
+    }
+
+    private <P> void handleException(ExeptionMessage exeptionMessage) {
+        Exception exceptionFromFile = exeptionMessage.getException();
+        // eigentlich kann nur ne io drin sein
+
+        if (exceptionFromFile instanceof IOException) {
+            exceptionFromFile.getCause();
+            Path missingResultPath = exeptionMessage.getPath();
+            if(!retriedPathList.contains(missingResultPath))
+                retriedPathList.add(missingResultPath);
+            FileMessage retryMessage = new FileMessage(missingResultPath, outputActor);
+            loadBalancer.tell(retryMessage, getSelf());
+
+        }
 
     }
 
@@ -83,6 +103,8 @@ public class FolderActor extends AbstractActor {
         // jetzt sind wir fertig mit einem file
         histogram = addUpAllFields(subResult, histogram);
 
+        // fertigesn path mit ergebniss in hashmap legen
+        //!!!!!!!!!!fileHistogramMap.putIfAbsent(fileResult.getFilePath(), subResult);
         filesProcessed++;
 
     }
@@ -118,8 +140,8 @@ public class FolderActor extends AbstractActor {
 
 
     // was mache ich jetzt ohne call, alles in processFilles reinstopfen denk ich, oder Übermethode!
-
-    public void calculateFolderHistogram(ParseDirectory message) throws Exception {
+//todo neue message
+    public void calculateFolderHistogram(Object message)  {
         // eher kein eigenes anlegen oder doch eig egal ob Feld, je nachdem wie Aggregation der Zwischenwerte erfolgt
         // ich könnte auch aus der message die hier übergeben wird was auslesen!!
         //Histogram histogram = new Histogram();
@@ -128,8 +150,23 @@ public class FolderActor extends AbstractActor {
         // if(cachedHistogram.isPresent()){
         //     histogram = cachedHistogram.get();
         //  } else {
-        processFiles();
 
+        // io aus dem directory stream in der methode
+        try {
+            processFiles();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            // todo würde nochmal einlesen des Folder probieren und wenn das nicht geht an projekt actor melden oder ex werfen, dass es kaputt ist?
+            try {
+                processFiles();
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+            } catch (IOException ioException) {
+                // todo jetzt retried ist kaputt und sollte propagiert werden per supervision denke ich
+
+            }
+        }
 
 
         //hier quasi Ergebniss zurücksenden und Folder aufzählen, weil final fertig mit einem
@@ -140,7 +177,11 @@ public class FolderActor extends AbstractActor {
 
         // easy mode bissel sleepen damit alles fertig werden kann
 
-        Thread.currentThread().sleep(1000);
+        try {
+            Thread.currentThread().sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         if (filesProcessed!=filesToProcess) {
 
@@ -151,7 +192,7 @@ public class FolderActor extends AbstractActor {
             for (Path filePath: pathFileList) {
                 if(fileHistogramMap.get(filePath)==null) {
                     // second Processing if there was an error
-                    FileMessage secondMessage = new FileMessage(filePath, getSelf(), outputActor);
+                    FileMessage secondMessage = new FileMessage(filePath, outputActor);
                     loadBalancer.tell(message, getSelf());
                 }
 
@@ -160,10 +201,13 @@ public class FolderActor extends AbstractActor {
             histogram.setDirectories(1);
 
             // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
-            ReturnResult folderResultMessage = new ReturnResult(histogram);
+            Path folderPath = Paths.get(folder);
 
 
-            projectActor.tell(folderResultMessage, getSelf());
+            //!!!!ReturnResult folderResultMessage = new ReturnResult(histogram, folderPath);
+
+
+            //!!!!projectActor.tell(folderResultMessage, getSelf());
 
         }
 
@@ -188,8 +232,9 @@ public class FolderActor extends AbstractActor {
      * @throws IOException
      * @throws InterruptedException
      */
-    private void processFiles() throws IOException, InterruptedException {
+    private void processFiles() throws InterruptedException, IOException {
         Path folderPath = Paths.get(folder);
+        // io kommt hier vom directoryStream
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
                 checkForInterrupt();
@@ -203,7 +248,7 @@ public class FolderActor extends AbstractActor {
                         // aufzählen wie viele zu verarbeiten sind
                         this.filesToProcess++;
                         // hier senden
-                        FileMessage message = new FileMessage(path, getSelf(), outputActor);
+                        FileMessage message = new FileMessage(path, outputActor);
                         // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
                         // denke ich bin hier aber erstmal fertig?
                         loadBalancer.tell(message, getSelf());

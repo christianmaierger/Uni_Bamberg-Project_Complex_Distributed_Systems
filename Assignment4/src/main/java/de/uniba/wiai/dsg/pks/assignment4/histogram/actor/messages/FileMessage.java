@@ -8,12 +8,10 @@ import java.nio.file.Path;
 public final class FileMessage {
     private static final long serialVersionUID = 1L;
     private final Path path;
-    private final ActorRef folderActor;
     private final ActorRef outputActor;
 
-    public FileMessage(Path path, ActorRef foderActor, ActorRef outputActor) {
+    public FileMessage(Path path, ActorRef outputActor) {
         this.path = path;
-        this.folderActor = foderActor;
         this.outputActor = outputActor;
     }
 
@@ -21,9 +19,6 @@ public final class FileMessage {
         return path;
     }
 
-    public ActorRef getFolderActor() {
-        return folderActor;
-    }
 
     public ActorRef getOutputActor() {
         return outputActor;

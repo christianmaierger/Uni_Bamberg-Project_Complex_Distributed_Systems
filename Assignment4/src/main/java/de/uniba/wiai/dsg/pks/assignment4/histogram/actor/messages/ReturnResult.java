@@ -5,6 +5,7 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import java.io.Serializable;
 import java.util.Objects;
 
+//FIXME: Auf eine Variante der Nachrichten einigen, ReturnResult ist bei uns unterschiedlich. Einmal alle Nachrichten anschauen.
 public final class ReturnResult implements Serializable {
     private static final long serialVersionUID = 1L;
 

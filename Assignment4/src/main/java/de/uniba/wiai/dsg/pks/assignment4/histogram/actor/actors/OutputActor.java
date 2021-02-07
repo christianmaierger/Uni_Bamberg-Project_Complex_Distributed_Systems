@@ -1,15 +1,11 @@
 package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.HistogramRequest;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.LogMessage;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.LogMessageType;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.UnknownMessage;
 
 import java.util.Optional;
 
@@ -38,6 +34,7 @@ public class OutputActor extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(LogMessage.class, this::logMessage)
+                .match(UnknownMessage.class, this::logUnknownMessage)
                 .matchAny(msg -> log.warning("Received unknown message: {}", msg))
                 .build();
     }
@@ -45,5 +42,10 @@ public class OutputActor extends AbstractActor {
     private void logMessage(LogMessage logMessage){
         log.info("\n\tProcessing of {} {} has finished. Result Histogram:\n\t{}",
                 logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
+    }
+
+    private void logUnknownMessage(UnknownMessage message){
+        log.warning(
+                "\n\t{} received an unknown message of type {}", getSender(), message.getMessageType());
     }
 }
