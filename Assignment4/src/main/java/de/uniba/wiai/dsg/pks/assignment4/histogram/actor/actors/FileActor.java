@@ -18,10 +18,8 @@ import java.util.stream.Stream;
 public class FileActor extends AbstractActor {
 
 
-
-
     static Props props() {
-        return Props.create(FileActor.class, ()-> new FileActor());
+        return Props.create(FileActor.class, () -> new FileActor());
     }
 
 
@@ -30,20 +28,20 @@ public class FileActor extends AbstractActor {
         return receiveBuilder()
                 .match(FileMessage.class, this::processFile)
                 // hier könnte man auch ex anch oben propagieren
-				.matchAny(any -> System.out.println("Unknown Message: " + any))
+                .matchAny(any -> System.out.println("Unknown Message: " + any))
                 .build();
     }
 
     private <P> void processFile(FileMessage message) {
-       Path filePath= message.getPath();
-       // sollte passen mit neuem
+        Path filePath = message.getPath();
+        // sollte passen mit neuem
         Histogram histogram = new Histogram();
 
         //todo ex handling
         try {
             processFileContent(filePath, histogram);
         } catch (IOException e) {
-           // todo
+            // todo
             // entweder hier oder gleich in der Methode?
             //IO scheint mir einzige Ex in der Klasse zu sein?
             ExeptionMessage exeptionMessage = new ExeptionMessage(e, filePath);
@@ -65,10 +63,11 @@ public class FileActor extends AbstractActor {
 
     /**
      * Returns the number of lines in the input Path "path"
+     *
      * @param path path to file whose numbers shall be counted
      * @return number of lines in the input file
      */
-    public static long getLinesPerFile(Path path){
+    public static long getLinesPerFile(Path path) {
         try (Stream<String> lines = Files.lines(path)) {
             return lines.count();
         } catch (IOException | UncheckedIOException exception) {
@@ -78,10 +77,11 @@ public class FileActor extends AbstractActor {
 
     /**
      * Returns a List<String> representation of the file at the input Path "path".
+     *
      * @param path Path to file to convert
      * @return List<String> of input file
      */
-    public static List<String> getFileAsLines(Path path){
+    public static List<String> getFileAsLines(Path path) {
         try {
             return Files.readAllLines(path);
         } catch (IOException | UncheckedIOException exception) {
@@ -93,10 +93,11 @@ public class FileActor extends AbstractActor {
      * Counts lower- and uppercase latin alphabet letters in the given input file "file". Returns a long array
      * with 26 fields. The first field holds the number of 'A'/'a' characters in the file, the second field the
      * number of 'B'/'b' characters and so on.
+     *
      * @param file List<String> file to count the letters of
      * @return long[] representing the respective occurrence of latin characters
      */
-    public static long[] countLetters(List<String> file){
+    public static long[] countLetters(List<String> file) {
         long[] distribution = new long[26];
         for (String line : file) {
             for (int x = 0; x < line.length(); x++) {
@@ -120,16 +121,13 @@ public class FileActor extends AbstractActor {
      * @param distributionB second long[] distribution of size 26
      * @return long[] array that holds the field-wise addition of the two input arrays
      */
-    public static long[] sumUpDistributions(long[] distributionA, long[] distributionB){
+    public static long[] sumUpDistributions(long[] distributionA, long[] distributionB) {
         long[] result = new long[Histogram.ALPHABET_SIZE];
         for (int i = 0; i < Histogram.ALPHABET_SIZE; i++) {
             result[i] = distributionA[i] + distributionB[i];
         }
         return result;
     }
-
-
-
 
 
 }
