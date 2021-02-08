@@ -18,7 +18,10 @@ public final class ReturnResult implements Serializable {
         this.filePath = filePath;
     }
 
-
+    public ReturnResult(Histogram histogram) {
+        this.resultHistogram = deepCopyHistogram(histogram);
+        this.filePath = null;
+    }
 
     public Histogram getHistogram() {
         return deepCopyHistogram(resultHistogram);

@@ -13,7 +13,7 @@ public class LoadBalancer extends AbstractActor {
     private final Router router;
 
     public LoadBalancer(List<Routee> routees) {
-        //TODO: Think about routing strategies and read up on them
+        //TODO: Think about routing strategies and read up on them -> test it!
         router = new Router(new SmallestMailboxRoutingLogic(), routees);
     }
 
@@ -26,6 +26,5 @@ public class LoadBalancer extends AbstractActor {
         return receiveBuilder()
                 .match(FileMessage.class, message -> router.route(message, getSender())).build();
     }
-
 
 }

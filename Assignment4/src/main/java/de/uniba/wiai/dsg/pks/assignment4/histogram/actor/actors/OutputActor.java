@@ -10,7 +10,7 @@ import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.UnknownMessage
 import java.util.Optional;
 
 public class OutputActor extends AbstractActor {
-    LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     public static Props props(){
         return Props.create(OutputActor.class, () -> new OutputActor());
@@ -23,20 +23,11 @@ public class OutputActor extends AbstractActor {
     //FIXME: nachschauen wie man debug nachrichten sehen kann
 
     @Override
-    public void preRestart(Throwable reason, Optional<Object> message) {
-        log.error(
-                reason,
-                "Restarting due to [{}] when processing [{}]",
-                reason.getMessage(),
-                message.orElse(""));
-    }
-
-    @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(LogMessage.class, this::logMessage)
                 .match(UnknownMessage.class, this::logUnknownMessage)
-                .matchAny(msg -> log.warning("Received unknown message: {}", msg))
+                .matchAny(this::logUnknownMessage)
                 .build();
     }
 
@@ -45,9 +36,13 @@ public class OutputActor extends AbstractActor {
                 logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
     }
 
-    //FIXME: Chris diese Methode zeigen
     private void logUnknownMessage(UnknownMessage message){
         log.warning(
                 "\n\t{} received an unknown message of type {}", getSender(), message.getMessageType());
+    }
+
+    private void logUnknownMessage(Object message){
+        log.warning(
+                "\n\t{} received an unknown message of type {}", getSelf(), message.getClass().toString());
     }
 }

@@ -1,15 +1,11 @@
 package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
 import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ExeptionMessage;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.*;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,38 +23,32 @@ public class FileActor extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(FileMessage.class, this::processFile)
-                // hier könnte man auch ex anch oben propagieren
-                .matchAny(any -> System.out.println("Unknown Message: " + any))
+                .matchAny(this::handleUnknownMessage)
                 .build();
     }
 
-    private <P> void processFile(FileMessage message) {
+    private void processFile(FileMessage message) throws IOException {
         Path filePath = message.getPath();
-        // sollte passen mit neuem
         Histogram histogram = new Histogram();
-
-        //todo ex handling
         try {
-            processFileContent(filePath, histogram);
+            histogram.setLines(histogram.getLines() + getLinesPerFile(filePath));
+            List<String> lines = getFileAsLines(filePath);
+            long[] distribution = countLetters(lines);
+            histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
+            ReturnResult fileResult = new ReturnResult(histogram, filePath);
+            getSender().tell(fileResult, getSelf());
+            message.getOutputActor().tell(new LogMessage(histogram, filePath.toString(), LogMessageType.FILE), getSelf());
         } catch (IOException e) {
-            // todo
-            // entweder hier oder gleich in der Methode?
-            //IO scheint mir einzige Ex in der Klasse zu sein?
             ExeptionMessage exeptionMessage = new ExeptionMessage(e, filePath);
-            // problem, der kennt seinen FolderActor nicht, müsste der loadbalancer dem forwarden
             getSender().tell(exeptionMessage, getSelf());
+            throw e;
         }
     }
 
-    private void processFileContent(Path path, Histogram histogram) throws IOException {
-        histogram.setLines(histogram.getLines() + getLinesPerFile(path));
-        List<String> lines = getFileAsLines(path);
-        long[] distribution = countLetters(lines);
-        // todo zürickschicken
-        histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
-        ReturnResult fileResult = new ReturnResult(histogram, path);
-        //to kennt ja dessen FolderActor nicht, muss loadbalancer ihm forwarden
-        getSender().tell(fileResult, getSelf());
+    private void handleUnknownMessage(Object unknownMessage) {
+        UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
+        //outputActor.tell(message, getSelf());
+        //TODO: Hier können wir gar nicht loggen, dass eine unknown Message kam
     }
 
     /**
@@ -67,11 +57,9 @@ public class FileActor extends AbstractActor {
      * @param path path to file whose numbers shall be counted
      * @return number of lines in the input file
      */
-    public static long getLinesPerFile(Path path) {
+    private long getLinesPerFile(Path path) throws IOException {
         try (Stream<String> lines = Files.lines(path)) {
             return lines.count();
-        } catch (IOException | UncheckedIOException exception) {
-            throw new RuntimeException("An I/O error occurred.");
         }
     }
 
@@ -81,12 +69,8 @@ public class FileActor extends AbstractActor {
      * @param path Path to file to convert
      * @return List<String> of input file
      */
-    public static List<String> getFileAsLines(Path path) {
-        try {
-            return Files.readAllLines(path);
-        } catch (IOException | UncheckedIOException exception) {
-            throw new RuntimeException("An I/O error occurred.");
-        }
+    private List<String> getFileAsLines(Path path) throws IOException {
+        return Files.readAllLines(path);
     }
 
     /**
@@ -97,7 +81,7 @@ public class FileActor extends AbstractActor {
      * @param file List<String> file to count the letters of
      * @return long[] representing the respective occurrence of latin characters
      */
-    public static long[] countLetters(List<String> file) {
+    private long[] countLetters(List<String> file) {
         long[] distribution = new long[26];
         for (String line : file) {
             for (int x = 0; x < line.length(); x++) {
@@ -121,13 +105,11 @@ public class FileActor extends AbstractActor {
      * @param distributionB second long[] distribution of size 26
      * @return long[] array that holds the field-wise addition of the two input arrays
      */
-    public static long[] sumUpDistributions(long[] distributionA, long[] distributionB) {
+    private long[] sumUpDistributions(long[] distributionA, long[] distributionB) {
         long[] result = new long[Histogram.ALPHABET_SIZE];
         for (int i = 0; i < Histogram.ALPHABET_SIZE; i++) {
             result[i] = distributionA[i] + distributionB[i];
         }
         return result;
     }
-
-
 }
