@@ -22,7 +22,8 @@ public class FolderActor extends AbstractActor {
     private Histogram histogram;
     private ActorRef projectActor;
     private final ActorRef outputActor;
-   private final List<Path> retriedPathList = new LinkedList<>();
+    private final List<Path> retriedPathList = new LinkedList<>();
+    private String folderPath;
 
 
     public FolderActor(ActorRef loadBalancer, ActorRef outputActor) {
@@ -46,6 +47,18 @@ public class FolderActor extends AbstractActor {
                 .build();
 
     }
+
+
+    public void calculateFolderHistogram(ParseDirectory message) {
+        try {
+            this.projectActor = getSender();
+            folderPath = message.getPath();
+            processFiles(message.getPath(), message.getFileExtension());
+        } catch (IOException e) {
+            projectActor.tell(PoisonPill.getInstance(), getSelf());
+        }
+    }
+
 
     private void handleException(ExeptionMessage exeptionMessage) {
         Exception exceptionFromFile = exeptionMessage.getException();
@@ -71,10 +84,11 @@ public class FolderActor extends AbstractActor {
         checkForCompletion(fileResult.getFilePath().toString());
     }
 
+    // path ist hier halt path zum file, nicht path des ORdners!
     private void checkForCompletion(String path){
         if(filesProcessed == filesToProcess){
             histogram.setDirectories(1);
-            outputActor.tell(new LogMessage(this.histogram, path, LogMessageType.FOLDER), getSelf());
+            outputActor.tell(new LogMessage(this.histogram, folderPath ,LogMessageType.FOLDER), getSelf());
             projectActor.tell(new ReturnResult(this.histogram), getSelf());
         }
     }
@@ -102,18 +116,9 @@ public class FolderActor extends AbstractActor {
         result.setProcessedFiles(oldHistogram.getProcessedFiles() + subResultHistogram.getProcessedFiles());
         result.setDirectories(oldHistogram.getDirectories() + subResultHistogram.getDirectories());
         result.setLines(oldHistogram.getLines() + subResultHistogram.getLines());
-
         return result;
     }
 
-    public void calculateFolderHistogram(ParseDirectory message) {
-        try {
-            this.projectActor = getSender();
-            processFiles(message.getPath(), message.getFileExtension());
-        } catch (IOException e) {
-            projectActor.tell(PoisonPill.getInstance(), getSelf());
-        }
-    }
 
 
     private void handleUnknownMessage(Object unknownMessage) {
@@ -129,14 +134,15 @@ public class FolderActor extends AbstractActor {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
+                    filesToProcess++;
 
-                    histogram.setFiles(histogram.getFiles() + 1);
-                    filesProcessed++;
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
-                        this.filesToProcess++;
                         FileMessage message = new FileMessage(path, outputActor);
                         loadBalancer.tell(message, getSelf());
+                    } else {
+                        histogram.setFiles(histogram.getFiles() + 1);
+                        filesProcessed++;
                     }
                 }
             }

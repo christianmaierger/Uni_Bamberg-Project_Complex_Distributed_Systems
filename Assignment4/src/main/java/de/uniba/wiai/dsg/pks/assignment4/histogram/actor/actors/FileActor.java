@@ -34,6 +34,7 @@ public class FileActor extends AbstractActor {
             histogram.setLines(histogram.getLines() + getLinesPerFile(filePath));
             List<String> lines = getFileAsLines(filePath);
             long[] distribution = countLetters(lines);
+            histogram.setFiles(histogram.getFiles()+1);
             histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
             ReturnResult fileResult = new ReturnResult(histogram, filePath);
             getSender().tell(fileResult, getSelf());

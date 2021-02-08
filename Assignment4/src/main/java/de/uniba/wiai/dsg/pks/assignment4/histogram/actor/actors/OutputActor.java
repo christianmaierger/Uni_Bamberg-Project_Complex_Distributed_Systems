@@ -5,6 +5,7 @@ import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.LogMessage;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.LogMessageType;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.UnknownMessage;
 
 import java.util.Optional;
@@ -31,9 +32,15 @@ public class OutputActor extends AbstractActor {
                 .build();
     }
 
-    private void logMessage(LogMessage logMessage){
-        log.info("\n\tProcessing of {} {} has finished. Result Histogram:\n\t{}",
-                logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
+    private void logMessage(LogMessage logMessage) {
+
+        if (logMessage.getLogMessageType()== LogMessageType.FOLDER) {
+            log.info("\n\tProcessing of {} {} has finished. Result Histogram:\n\t{}",
+                    logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
+        } else {
+            log.info("\n\tProcessing of {} {} has finished.",
+                    logMessage.getLogMessageType().toString(), logMessage.getPath());
+        }
     }
 
     private void logUnknownMessage(UnknownMessage message){

@@ -74,16 +74,23 @@ public class ProjectActor extends AbstractActor {
             Path rootDirectoryPath = Path.of(rootDirectory);
             this.pendingFolderActors++;
             startFolderActor(rootDirectory, this.pendingFolderActors);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDirectoryPath)) {
-                for (Path path : stream) {
-                    if (Files.isDirectory(path)) {
-                        this.pendingFolderActors++;
-                        startFolderActor(path.toString(), this.pendingFolderActors);
-                    }
-                }
-            }
+
+
+            traverse(rootDirectoryPath);
         } catch (IOException ioException){
             getSender().tell(new akka.actor.Status.Failure(ioException), getSelf());
+        }
+    }
+
+    private void traverse(Path rootDirectoryPath) throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDirectoryPath)) {
+            for (Path path : stream) {
+                if (Files.isDirectory(path)) {
+                    this.pendingFolderActors++;
+                    startFolderActor(path.toString(), this.pendingFolderActors);
+                    traverse(path);
+                }
+            }
         }
     }
 
