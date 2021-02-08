@@ -44,6 +44,7 @@ public class OutputActor extends AbstractActor {
                 logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
     }
 
+    //FIXME: Chris diese Methode zeigen
     private void logUnknownMessage(UnknownMessage message){
         log.warning(
                 "\n\t{} received an unknown message of type {}", getSender(), message.getMessageType());

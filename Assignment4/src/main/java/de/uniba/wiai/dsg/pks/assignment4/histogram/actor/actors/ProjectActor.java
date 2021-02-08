@@ -1,8 +1,7 @@
 package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import akka.actor.*;
+import akka.japi.pf.DeciderBuilder;
 import akka.routing.ActorRefRoutee;
 import akka.routing.Routee;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
@@ -12,8 +11,10 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ProjectActor extends AbstractActor {
     private final int NUMBER_FILE_ACTORS = 8;
@@ -23,6 +24,17 @@ public class ProjectActor extends AbstractActor {
     private ActorRef loadBalancer;
     private ActorRef outputActor;
     private final Histogram histogram = new Histogram();
+    private final SupervisorStrategy strategy = new OneForOneStrategy(10, Duration.ofMinutes(1),
+            DeciderBuilder
+                    .match(ArithmeticException.class, e -> SupervisorStrategy.resume())
+                    .match(NullPointerException.class, e -> SupervisorStrategy.restart())
+                    .match(IllegalArgumentException.class, e -> SupervisorStrategy.stop())
+                    .matchAny(o -> SupervisorStrategy.escalate())
+                    .build());
+            //FIXME: Welche Arten von Exceptions müssen hier aus FileActor und FolderActor gehandelt werden?
+            // Könnte es evtl. sinnvoll sein, den LoadBalancer zum Supervisor von FileActors zu machen, falls
+            // das exception handling von FileActor und FolderActor sich sehr unterscheidet? Aber in den Folien
+            // aus der Übung war es nicht so...
 
     public ProjectActor(String rootDirectory, String fileExtension){
         this.rootDirectory = rootDirectory;
@@ -54,38 +66,46 @@ public class ProjectActor extends AbstractActor {
         this.outputActor = getContext().actorOf(OutputActor.props(), "OutputActor");
     }
 
-    //TODO: Take care of exception here
-    private void handleRequest(HistogramRequest request) throws IOException {
-        int actorCount = 0;
-        Path rootDirectoryPath = Path.of(rootDirectory);
-        actorCount++;
-        startFolderActor(rootDirectory, actorCount);
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDirectoryPath)) {
-            for (Path path : stream) {
-                if (Files.isDirectory(path)) {
-                    actorCount++;
-                    startFolderActor(path.toString(), actorCount);
+    @Override
+    public SupervisorStrategy supervisorStrategy() {
+        return strategy;
+    }
+
+    private void handleRequest(HistogramRequest request) {
+        try {
+            int actorCount = 0;
+            Path rootDirectoryPath = Path.of(rootDirectory);
+            actorCount++;
+            startFolderActor(rootDirectory, actorCount);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDirectoryPath)) {
+                for (Path path : stream) {
+                    if (Files.isDirectory(path)) {
+                        actorCount++;
+                        startFolderActor(path.toString(), actorCount);
+                    }
                 }
             }
+            this.pendingFolderActors = actorCount;
+        } catch (IOException ioException){
+            getSender().tell(new akka.actor.Status.Failure(ioException), getSelf());
         }
-        this.pendingFolderActors = actorCount;
     }
 
     private void addHistogram(ReturnResult returnResult){
-        //TODO: evtl hier checken, ob überhaupt ein Histogram drin ist?
         Histogram newHistogram = returnResult.getHistogram();
-        this.histogram.setFiles(this.histogram.getFiles() + newHistogram.getFiles());
-        this.histogram.setProcessedFiles(this.histogram.getProcessedFiles() + newHistogram.getProcessedFiles());
-        this.histogram.setDirectories(this.histogram.getDirectories() + newHistogram.getDirectories());
-        this.histogram.setLines(this.histogram.getLines() + newHistogram.getLines());
-        for(int i=0; i<26 ; i++) {
-            this.histogram.getDistribution()[i]= this.histogram.getDistribution()[i] + newHistogram.getDistribution()[i];
+        if(Objects.nonNull(newHistogram)){
+            this.histogram.setFiles(this.histogram.getFiles() + newHistogram.getFiles());
+            this.histogram.setProcessedFiles(this.histogram.getProcessedFiles() + newHistogram.getProcessedFiles());
+            this.histogram.setDirectories(this.histogram.getDirectories() + newHistogram.getDirectories());
+            this.histogram.setLines(this.histogram.getLines() + newHistogram.getLines());
+            for(int i=0; i<26 ; i++) {
+                this.histogram.getDistribution()[i]= this.histogram.getDistribution()[i] + newHistogram.getDistribution()[i];
+            }
+        } else {
+            //FIXME: Was tun, wenn kein Histogram da? Gibt es überhaupt einen use case, in dem folder actor null schickt?
         }
         this.pendingFolderActors--;
-        if(pendingFolderActors == 0){
-            getSender().tell(new ReturnResult(this.histogram), getSelf());
-            outputActor.tell(new LogMessage(this.histogram, this.rootDirectory, LogMessageType.PROJECT), getSelf());
-        }
+        checkForCompletion();
     }
 
     private void handleUnknownMessage(Object unknownMessage){
@@ -96,7 +116,16 @@ public class ProjectActor extends AbstractActor {
     private void startFolderActor(String directory, int actorNumber){
         Props folderActorProps = FolderActor.props(directory, fileExtension, loadBalancer, getSelf(), outputActor);
         ActorRef folderActor = getContext().actorOf(folderActorProps, "FolderActor" + actorNumber);
-        //TODO: Welche Nachricht hier in FolderActor schicken klären!
+        //FIXME: Welche Nachricht hier in FolderActor schicken klären!
         folderActor.tell(new ParseDirectory(directory, fileExtension), getSelf());
     }
+
+    private void checkForCompletion(){
+        if(pendingFolderActors == 0){
+            outputActor.tell(new LogMessage(this.histogram, this.rootDirectory, LogMessageType.PROJECT), getSelf());
+            getSender().tell(new ReturnResult(this.histogram), getSelf());
+        }
+    }
+
+
 }

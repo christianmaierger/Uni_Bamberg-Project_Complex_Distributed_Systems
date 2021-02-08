@@ -1,5 +1,6 @@
 package de.uniba.wiai.dsg.pks.assignment4.histogram.actor;
 
+import akka.ConfigurationException;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.pattern.Patterns;
@@ -24,26 +25,35 @@ public class ActorHistogramService implements HistogramService {
 
 	@Override
 	public Histogram calculateHistogram(String rootDirectory, String fileExtension) throws HistogramServiceException {
-		ActorSystem actorSystem = ActorSystem.create();
+		ActorSystem actorSystem;
+		try{
+			actorSystem = ActorSystem.create();
+		} catch (ConfigurationException configurationException){
+			throw new HistogramServiceException("Start up failed due to interrupt");
+		}
 		ActorRef projectActor = actorSystem.actorOf(ProjectActor.props(rootDirectory, fileExtension), "ProjectActor");
-		projectActor.tell(new Histogram(), ActorRef.noSender());
 		CompletableFuture<Object> future =
-				Patterns.ask(projectActor, new HistogramRequest(), Duration.ofSeconds(30)).toCompletableFuture();
+				Patterns.ask(projectActor, new HistogramRequest(), Duration.ofSeconds(60)).toCompletableFuture();
+
 		try{
 			Object returnResult = future.get();
-			if(returnResult instanceof ReturnResult){
-				Histogram result = ((ReturnResult) returnResult).getHistogram();
-				if(Objects.isNull(result)){
-					throw new HistogramServiceException("No histogram is present.");
-				} else {
-					return result;
-				}
+			Histogram result = ((ReturnResult) returnResult).getHistogram();
+			if (Objects.nonNull(result)) {
+				actorSystem.terminate();
+				return result;
 			} else {
-				throw new HistogramServiceException("Wrong message type was returned.");
+				throw new HistogramServiceException("No histogram is present.");
 			}
-		} catch (InterruptedException | ExecutionException interruptedException) {
-			//TODO: Add shutdown policy
-			throw new HistogramServiceException(interruptedException.getMessage(), interruptedException.getCause());
+		} catch (ClassCastException classCastException){
+			actorSystem.terminate();
+			throw new HistogramServiceException("Wrong message type was returned.");
+		} catch (InterruptedException interruptedException) {
+			actorSystem.terminate();
+			throw new HistogramServiceException("Execution has been interrupted.");
+		} catch (ExecutionException executionException){
+			//FIXME: Einfach bei Exception alles plattmachen. Ist das ok?
+			actorSystem.terminate();
+			throw new HistogramServiceException(executionException.getMessage(), executionException.getCause());
 		}
 	}
 
