@@ -2,10 +2,10 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 
 import java.nio.file.Path;
 
-public final class FileMessage {
+public final class ExceptionMessage {
     private final Path path;
 
-    public FileMessage(Path path) {
+    public ExceptionMessage(Path path) {
         this.path = path;
     }
 
@@ -15,6 +15,6 @@ public final class FileMessage {
 
     @Override
     public String toString() {
-        return "FileMessage[path=" + path + ']';
+        return "ExceptionMessage[path=" + path + ']';
     }
 }

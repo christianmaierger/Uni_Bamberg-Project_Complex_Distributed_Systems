@@ -2,106 +2,104 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.japi.pf.ReceiveBuilder;
+import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.DirectoryServer;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.server.TCPClientHandler;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.GetResult;
-import de.uniba.wiai.dsg.pks.assignment3.histogram.socket.shared.ParseDirectory;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
-import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.ReturnResult;
-
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.FinalFailureException;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.*;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 public class FolderActor extends AbstractActor {
-
-    private final String folder;
-    private final String fileExtension;
-
     private int filesToProcess;
     private int filesProcessed;
-
-    // checke noch nicht, wie ich mit dem loadBalancer bzw dessen gemanagten FileActors umgehen soll
     private final ActorRef loadBalancer;
     private Histogram histogram;
-   //brauchen wir den project actor vielleicht? Denke ja dann spare ich den handshake komplett ein
-   private ActorRef projectActor;
-   // wahrscheinlich brauchen wir auch den OutputActor
-
-    // evtl auch wieder hashmap um zu schauen ob was verloren ging durch ex?
-    HashMap<Path, Histogram> fileHistogramMap;
-    List<Path> pathFileList = new LinkedList<>();
+    private ActorRef projectActor;
+    private final ActorRef outputActor;
+    private final List<Path> retriedPathList = new LinkedList<>();
+    private String folderPath;
 
 
-    public FolderActor(String folder, String fileExtension, ActorRef loadBalancer, ActorRef projectActor) {
-        this.folder = folder;
-        this.fileExtension = fileExtension;
+    public FolderActor(ActorRef loadBalancer, ActorRef outputActor) {
         this.loadBalancer = loadBalancer;
         this.histogram = new Histogram();
-        // evtl die adneren Felder vom projectActor getten wie dessen loadbalancer, fileEx etc?!
-        this.projectActor=projectActor;
-        this.fileHistogramMap = new HashMap<>();
+        this.outputActor = outputActor;
     }
 
-
+    public static Props props(ActorRef loadBalancer, ActorRef outputActor) {
+        return Props.create(FolderActor.class, () -> new FolderActor(loadBalancer, outputActor));
+    }
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                // actor funktioniert ja über messages gibt ja kein main oder call, ProjectActor muss den irgendwie anstoßen
-                // und ich muss die histograme der einzelnen FIleActors entgegen nehmen
-                // sonst brauch ich eigentlich nix, warum nicht ungefragt wenn fertig die Ergebnisse an den OutPutActor und ProjectActor eifnach senden und
-                // die reagieren in Ihrem recieve BUilder darauf?
                 .match(ParseDirectory.class, this::calculateFolderHistogram)
-                .match(ReturnResult.class, this::proccessFileResults)
+                .match(ReturnResult.class, this::processFileResults)
+                .match(ExceptionMessage.class, this::handleException)
+                .matchAny(this::handleUnknownMessage)
                 .build();
-
     }
 
 
-    // fehlt hier nich was
-    private <P> void proccessFileResults(ReturnResult fileResult) {
+    private void calculateFolderHistogram(ParseDirectory message) throws FinalFailureException {
+        try {
+            this.projectActor = getSender();
+            folderPath = message.getPath();
+            processFiles(message.getPath(), message.getFileExtension());
+        } catch (IOException e) {
+            throw new FinalFailureException(e);
+        }
+    }
 
-        // aufzählen vielleicht besser erst wenn file wieder da ist
-        histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
-        // von p alles getten und aufzählen schätze ich
+    private void handleException(ExceptionMessage exceptionMessage) throws FinalFailureException {
+        Path missingResultPath = exceptionMessage.getPath();
+        if (!retriedPathList.contains(missingResultPath)) {
+            retriedPathList.add(missingResultPath);
+            FileMessage retryMessage = new FileMessage(missingResultPath);
+            loadBalancer.tell(retryMessage, getSelf());
+        } else {
+            throw new FinalFailureException("FolderActor was not able to finish due to repeated IOException." +
+                    "Result cannot be correct anymore.");
+        }
+    }
 
+    private void processFileResults(ReturnResult fileResult) {
         Histogram subResult = fileResult.getHistogram();
-
-
-        // jetzt sind wir fertig mit einem file
+        outputActor.tell(new LogMessage(subResult, fileResult.getFilePath().toString(), LogMessageType.FILE), getSender());
         histogram = addUpAllFields(subResult, histogram);
-
         filesProcessed++;
-
+        checkForCompletion();
     }
 
+    private void checkForCompletion() {
+        if (filesProcessed == filesToProcess) {
+            histogram.setDirectories(1);
+            outputActor.tell(new LogMessage(this.histogram, folderPath, LogMessageType.FOLDER), getSelf());
+            projectActor.tell(new ReturnResult(this.histogram), getSelf());
+        }
+    }
 
-    // hier darf ich schon die model histogram methoden verwenden?
     /**
      * Adds up all fields of two histograms and returns a new histogram with their values from all fields added
      * together.
      *
      * @param subResultHistogram a new result as histogram of which the fields should be added on the fields of a given histogram
-     * @param oldHistogram the histogram to which the method should add to
+     * @param oldHistogram       the histogram to which the method should add to
      * @return a Histogrom holding the addition of the two input Histograms
      */
-    public static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
+    private Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
 
-        long[] oldHistogramDistribution= oldHistogram.getDistribution();
-        long[] newHistogramDistribution= subResultHistogram.getDistribution();
+        long[] oldHistogramDistribution = oldHistogram.getDistribution();
+        long[] newHistogramDistribution = subResultHistogram.getDistribution();
 
-        for(int i=0; i<26 ; i++) {
-            oldHistogramDistribution[i]= oldHistogramDistribution[i] + newHistogramDistribution[i];
+        for (int i = 0; i < 26; i++) {
+            oldHistogramDistribution[i] = oldHistogramDistribution[i] + newHistogramDistribution[i];
         }
 
         Histogram result = new Histogram();
@@ -110,98 +108,29 @@ public class FolderActor extends AbstractActor {
         result.setProcessedFiles(oldHistogram.getProcessedFiles() + subResultHistogram.getProcessedFiles());
         result.setDirectories(oldHistogram.getDirectories() + subResultHistogram.getDirectories());
         result.setLines(oldHistogram.getLines() + subResultHistogram.getLines());
-
         return result;
     }
 
-
-    // was mache ich jetzt ohne call, alles in processFilles reinstopfen denk ich, oder Übermethode!
-
-    public void calculateFolderHistogram(ParseDirectory message) throws Exception {
-      // eher kein eigenes anlegen oder doch eig egal ob Feld, je nachdem wie Aggregation der Zwischenwerte erfolgt
-        // ich könnte auch aus der message die hier übergeben wird was auslesen!!
-        //Histogram histogram = new Histogram();
-
-       // Optional<Histogram> cachedHistogram = parentServer.getCachedResult(parseDirectory);
-       // if(cachedHistogram.isPresent()){
-       //     histogram = cachedHistogram.get();
-      //  } else {
-            processFiles();
-
-
-
-        //hier quasi Ergebniss zurücksenden und Folder aufzählen, weil final fertig mit einem
-        //parentClientHandler.addToHistogram(histogram);
-
-        // ab hier eigentlich nur wenn wir echt fertig sind, also alle toPrecess processed sind!
-        //todo
-
-        // easy mode bissel sleepen damit alles fertig werden kann
-
-        Thread.currentThread().sleep(1000);
-
-        if (filesProcessed!=filesToProcess) {
-
-            // todo schauen was fehlt und nochmal machen lassen
-            // aber ab wann, kann ja auch einfach sein, dass die anderen noch brauchen
-            // easy abe rnicht so schön wäre ein Schläfchen, weiß aber nicht ob CompFutures ne Lösung wären,
-            // aber wäre sau wierd dass die wo anders bearbetiet und dann hier fertig werden....
-            for (Path filePath: pathFileList) {
-                if(fileHistogramMap.get(filePath)==null) {
-                    // second Processing if there was an error
-                    FileMessage secondMessage = new FileMessage(filePath);
-                    loadBalancer.tell(message, getSelf());
-                }
-
-            }
-        } else {
-            histogram.setDirectories(1);
-
-            // histogram hier dann an ProjectActor schicken der rechnet dass dann zusammen denke ich
-            ReturnResult folderResultMessage = new ReturnResult(histogram);
-
-
-            projectActor.tell(folderResultMessage, getSelf());
-
-        }
-
-
+    private void handleUnknownMessage(Object unknownMessage) {
+        throw new IllegalArgumentException(unknownMessage.getClass().getSimpleName());
     }
 
-    private void checkForInterrupt() throws InterruptedException {
-        if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException("Execution has been interrupted.");
-        }
-    }
-
-    private void processFiles() throws IOException, InterruptedException {
+    private void processFiles(String folder, String fileExtension) throws IOException {
         Path folderPath = Paths.get(folder);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
-                checkForInterrupt();
                 if (Files.isRegularFile(path)) {
-
-                    histogram.setFiles(histogram.getFiles() + 1);
-                    filesProcessed++;
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
-
-                        // aufzählen wie viele zu verarbeiten sind
-                        this.filesToProcess++;
-                      // hier senden
+                        filesToProcess++;
                         FileMessage message = new FileMessage(path);
-                        // der loadBalancer braucht doch jetzt eigene Logik, wie er das verteilt unter seinen Actoren für Files
-                        // denke ich bin hier aber erstmal fertig?
-                     loadBalancer.tell(message, getSelf());
-
-                     // path zur pathList damit wir wissen welche paths bearbeiten sien müssen
-                        pathFileList.add(path);
-
+                        loadBalancer.tell(message, getSelf());
+                    } else {
+                        histogram.setFiles(histogram.getFiles() + 1);
                     }
                 }
             }
         }
+        checkForCompletion();
     }
-
-
 }

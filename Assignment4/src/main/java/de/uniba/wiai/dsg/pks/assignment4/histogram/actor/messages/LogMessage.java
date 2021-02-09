@@ -2,38 +2,29 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 
-import java.nio.file.Path;
 import java.util.Objects;
 
-public final class ReturnResult {
-    private final Histogram resultHistogram;
-    private final Path filePath;
+public final class LogMessage {
+    private final Histogram histogram;
+    private final String path;
+    private final LogMessageType logMessageType;
 
-
-    public ReturnResult(Histogram histogram, Path filePath) {
-        this.resultHistogram = deepCopyHistogram(histogram);
-        this.filePath = filePath;
-    }
-
-    public ReturnResult(Histogram histogram) {
-        this.resultHistogram = deepCopyHistogram(histogram);
-        this.filePath = null;
+    public LogMessage(Histogram histogram, String path, LogMessageType logMessageType) {
+        this.histogram = deepCopyHistogram(histogram);
+        this.path = path;
+        this.logMessageType = logMessageType;
     }
 
     public Histogram getHistogram() {
-        return deepCopyHistogram(resultHistogram);
+        return deepCopyHistogram(histogram);
     }
 
-    public Path getFilePath() {
-        return filePath;
+    public String getPath() {
+        return path;
     }
 
-    @Override
-    public String toString() {
-        return "ReturnResult{" +
-                "resultHistogram=" + resultHistogram +
-                ", filePath=" + filePath +
-                '}';
+    public LogMessageType getLogMessageType() {
+        return logMessageType;
     }
 
     private Histogram deepCopyHistogram(Histogram histogram) {
@@ -52,5 +43,14 @@ public final class ReturnResult {
         }
         deepCopy.setDistribution(distribution);
         return deepCopy;
+    }
+
+    @Override
+    public String toString() {
+        return "LogMessage{" +
+                "histogram=" + histogram +
+                ", path='" + path + '\'' +
+                ", logMessageType=" + logMessageType +
+                '}';
     }
 }
