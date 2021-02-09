@@ -2,7 +2,6 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 
 import java.nio.file.Path;
 
-
 public final class FileMessage {
     private static final long serialVersionUID = 1L;
     private final Path path;

@@ -7,7 +7,7 @@ public final class UnknownMessage {
         this.messageType = messageType;
     }
 
-    public String getMessageType(){
+    public String getMessageType() {
         return messageType;
     }
 

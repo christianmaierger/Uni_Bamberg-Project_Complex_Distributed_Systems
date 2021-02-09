@@ -39,8 +39,8 @@ public final class ReturnResult implements Serializable {
                 '}';
     }
 
-    private Histogram deepCopyHistogram(Histogram histogram){
-        if(Objects.isNull(histogram)){
+    private Histogram deepCopyHistogram(Histogram histogram) {
+        if (Objects.isNull(histogram)) {
             return null;
         }
         Histogram deepCopy = new Histogram();

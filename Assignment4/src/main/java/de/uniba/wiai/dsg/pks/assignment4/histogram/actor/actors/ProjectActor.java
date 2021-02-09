@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProjectActor extends AbstractActor {
-    private final int NUMBER_FILE_ACTORS = 8;
+    private final int NUMBER_FILE_ACTORS;
     private int pendingFolderActors = 0;
     private String rootDirectory;
     private String fileExtension;
@@ -25,14 +25,15 @@ public class ProjectActor extends AbstractActor {
     private ActorRef outputActor;
     private ActorRef service;
     private final Histogram histogram = new Histogram();
-    private final SupervisorStrategy strategy = new OneForOneStrategy(10, Duration.ofMinutes(1),
-            DeciderBuilder
-                    .match(IOException.class, e -> SupervisorStrategy.restart())
-                    .matchAny(o -> SupervisorStrategy.escalate())
-                    .build());
 
     public static Props props() {
-        return Props.create(ProjectActor.class, () -> new ProjectActor());
+        return Props.create(ProjectActor.class, ProjectActor::new);
+    }
+
+    public ProjectActor() {
+        int kernels = Runtime.getRuntime().availableProcessors();
+        NUMBER_FILE_ACTORS = (int) Math.ceil(kernels / (1 - 0.4));
+        System.out.println(NUMBER_FILE_ACTORS);
     }
 
     @Override
@@ -40,7 +41,6 @@ public class ProjectActor extends AbstractActor {
         return receiveBuilder()
                 .match(ParseDirectory.class, this::handleRequest)
                 .match(ReturnResult.class, this::addHistogram)
-                .match(PoisonPill.class, this::suicide)
                 .matchAny(this::handleUnknownMessage)
                 .build();
     }
@@ -59,7 +59,7 @@ public class ProjectActor extends AbstractActor {
 
     @Override
     public SupervisorStrategy supervisorStrategy() {
-        return strategy;
+        return initializeSupervisionStrategy();
     }
 
     private void handleRequest(ParseDirectory request) {
@@ -71,7 +71,7 @@ public class ProjectActor extends AbstractActor {
             this.pendingFolderActors++;
             startFolderActor(rootDirectory, this.pendingFolderActors);
             traverse(rootDirectoryPath);
-        } catch (IOException ioException){
+        } catch (IOException ioException) {
             getSender().tell(new akka.actor.Status.Failure(ioException), getSelf());
         }
     }
@@ -101,11 +101,6 @@ public class ProjectActor extends AbstractActor {
         checkForCompletion();
     }
 
-    private void suicide(PoisonPill poisonPill) {
-        service.tell(new akka.actor.Status.Failure(new FinalFailureException("At least one FolderActor could" +
-                "not finish its tasks.")), getSelf());
-    }
-
     private void handleUnknownMessage(Object unknownMessage) {
         UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
         outputActor.tell(message, getSelf());
@@ -122,5 +117,23 @@ public class ProjectActor extends AbstractActor {
             outputActor.tell(new LogMessage(this.histogram, this.rootDirectory, LogMessageType.PROJECT), getSelf());
             service.tell(new ReturnResult(this.histogram), getSelf());
         }
+    }
+
+    //FIXME: Darf der LoadBalancer die FileActors supervisen statt dem ProjectActor?
+    private OneForOneStrategy initializeSupervisionStrategy() {
+        return new OneForOneStrategy(10, Duration.ofMinutes(1),
+                DeciderBuilder
+                        .match(IOException.class, e -> SupervisorStrategy.restart())
+                        .match(FinalFailureException.class, e -> {
+                            service.tell(new akka.actor.Status.Failure(e), getSelf());
+                            return SupervisorStrategy.stop();
+                        })
+                        .match(IllegalArgumentException.class, e -> {
+                            //FIXME: Tutoren fragen wegen unbekannten Nachrichten
+                            //outputActor.tell(new UnknownMessage(e.getMessage()), getSender());
+                            return SupervisorStrategy.resume();
+                        })
+                        .matchAny(o -> SupervisorStrategy.escalate())
+                        .build());
     }
 }

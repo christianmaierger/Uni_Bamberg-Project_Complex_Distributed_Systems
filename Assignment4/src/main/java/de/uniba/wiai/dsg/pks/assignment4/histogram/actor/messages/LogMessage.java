@@ -16,20 +16,20 @@ public final class LogMessage {
         this.logMessageType = logMessageType;
     }
 
-    public Histogram getHistogram(){
+    public Histogram getHistogram() {
         return deepCopyHistogram(histogram);
     }
 
-    public String getPath(){
+    public String getPath() {
         return path;
     }
 
-    public LogMessageType getLogMessageType(){
+    public LogMessageType getLogMessageType() {
         return logMessageType;
     }
 
-    private Histogram deepCopyHistogram(Histogram histogram){
-        if(Objects.isNull(histogram)){
+    private Histogram deepCopyHistogram(Histogram histogram) {
+        if (Objects.isNull(histogram)) {
             return null;
         }
         Histogram deepCopy = new Histogram();

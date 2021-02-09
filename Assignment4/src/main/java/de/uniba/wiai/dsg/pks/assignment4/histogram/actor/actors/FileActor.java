@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 public class FileActor extends AbstractActor {
 
     static Props props() {
-        return Props.create(FileActor.class, () -> new FileActor());
+        return Props.create(FileActor.class, FileActor::new);
     }
 
     @Override
@@ -45,9 +45,7 @@ public class FileActor extends AbstractActor {
     }
 
     private void handleUnknownMessage(Object unknownMessage) {
-        UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
-        //outputActor.tell(message, getSelf());
-        //TODO: Hier können wir gar nicht loggen, dass eine unknown Message kam
+        throw new IllegalArgumentException(unknownMessage.getClass().getSimpleName());
     }
 
     /**

@@ -5,7 +5,7 @@ import java.util.Locale;
 public enum LogMessageType {
     FILE, FOLDER, PROJECT;
 
-    public String toString(){
+    public String toString() {
         return this.name().toLowerCase(Locale.ROOT);
     }
 }

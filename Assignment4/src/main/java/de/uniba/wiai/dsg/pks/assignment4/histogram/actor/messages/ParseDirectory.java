@@ -31,14 +31,14 @@ public final class ParseDirectory implements Serializable {
     }
 
     @Override
-    public boolean equals(Object object){
+    public boolean equals(Object object) {
         if (this == object) {
             return true;
         }
         if (object == null) {
             return false;
         }
-        if (getClass() != object.getClass()){
+        if (getClass() != object.getClass()) {
             return false;
         }
         ParseDirectory other = (ParseDirectory) object;

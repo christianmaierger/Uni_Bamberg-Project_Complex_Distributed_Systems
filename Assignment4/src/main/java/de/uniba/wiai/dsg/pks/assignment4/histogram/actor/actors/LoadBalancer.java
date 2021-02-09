@@ -2,9 +2,9 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.Props;
+import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
-import akka.routing.SmallestMailboxRoutingLogic;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.FileMessage;
 
 import java.util.List;
@@ -13,11 +13,10 @@ public class LoadBalancer extends AbstractActor {
     private final Router router;
 
     public LoadBalancer(List<Routee> routees) {
-        //TODO: Think about routing strategies and read up on them -> test it!
-        router = new Router(new SmallestMailboxRoutingLogic(), routees);
+        router = new Router(new RoundRobinRoutingLogic(), routees);
     }
 
-    public static Props props(List<Routee> routees){
+    public static Props props(List<Routee> routees) {
         return Props.create(LoadBalancer.class, () -> new LoadBalancer(routees));
     }
 

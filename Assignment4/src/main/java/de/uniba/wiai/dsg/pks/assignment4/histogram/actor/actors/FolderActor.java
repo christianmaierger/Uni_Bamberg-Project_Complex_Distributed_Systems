@@ -2,9 +2,9 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.actors;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
-import akka.actor.PoisonPill;
 import akka.actor.Props;
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
+import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.FinalFailureException;
 import de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages.*;
 
 import java.io.IOException;
@@ -47,46 +47,44 @@ public class FolderActor extends AbstractActor {
     }
 
 
-    private void calculateFolderHistogram(ParseDirectory message) {
+    private void calculateFolderHistogram(ParseDirectory message) throws FinalFailureException {
         try {
             this.projectActor = getSender();
             folderPath = message.getPath();
             processFiles(message.getPath(), message.getFileExtension());
         } catch (IOException e) {
-            projectActor.tell(PoisonPill.getInstance(), getSelf());
+            throw new FinalFailureException(e);
         }
     }
 
-    private void handleException(ExceptionMessage exceptionMessage) {
+    private void handleException(ExceptionMessage exceptionMessage) throws FinalFailureException {
         Exception exceptionFromFile = exceptionMessage.getException();
         if (exceptionFromFile instanceof IOException) {
-            exceptionFromFile.getCause();
             Path missingResultPath = exceptionMessage.getPath();
-            if (!retriedPathList.contains(missingResultPath)){
+            if (!retriedPathList.contains(missingResultPath)) {
                 retriedPathList.add(missingResultPath);
                 FileMessage retryMessage = new FileMessage(missingResultPath);
                 loadBalancer.tell(retryMessage, getSelf());
             } else {
-                projectActor.tell(PoisonPill.getInstance(), getSelf());
+                throw new FinalFailureException("FolderActor was not able to finish due to repeated IOException." +
+                        "Result cannot be correct anymore.",
+                        exceptionFromFile.getCause());
             }
         }
     }
 
     private void processFileResults(ReturnResult fileResult) {
         Histogram subResult = fileResult.getHistogram();
-        //FIXME: So könnten wir hier die Files loggen, aber getSender(fileActor) oder getSelf(folderActor) als absender???
         outputActor.tell(new LogMessage(subResult, fileResult.getFilePath().toString(), LogMessageType.FILE), getSender());
         histogram = addUpAllFields(subResult, histogram);
         filesProcessed++;
         checkForCompletion();
     }
 
-    // path ist hier halt path zum file, nicht path des ORdners!
-    //Stimmt, der kann dann auch weg als Parameter
-    private void checkForCompletion(){
-        if(filesProcessed == filesToProcess){
+    private void checkForCompletion() {
+        if (filesProcessed == filesToProcess) {
             histogram.setDirectories(1);
-            outputActor.tell(new LogMessage(this.histogram, folderPath ,LogMessageType.FOLDER), getSelf());
+            outputActor.tell(new LogMessage(this.histogram, folderPath, LogMessageType.FOLDER), getSelf());
             projectActor.tell(new ReturnResult(this.histogram), getSelf());
         }
     }
@@ -99,7 +97,7 @@ public class FolderActor extends AbstractActor {
      * @param oldHistogram       the histogram to which the method should add to
      * @return a Histogrom holding the addition of the two input Histograms
      */
-    private static Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
+    private Histogram addUpAllFields(Histogram subResultHistogram, Histogram oldHistogram) {
 
         long[] oldHistogramDistribution = oldHistogram.getDistribution();
         long[] newHistogramDistribution = subResultHistogram.getDistribution();
@@ -118,8 +116,7 @@ public class FolderActor extends AbstractActor {
     }
 
     private void handleUnknownMessage(Object unknownMessage) {
-        UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
-        outputActor.tell(message, getSelf());
+        throw new IllegalArgumentException(unknownMessage.getClass().getSimpleName());
     }
 
     private void processFiles(String folder, String fileExtension) throws IOException {
@@ -127,17 +124,13 @@ public class FolderActor extends AbstractActor {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
-                    filesToProcess++;
-                    //FIXME: Sollte hier nicht erst filesToProcess inkrementiert werden, wenn das file auch
-                    // die richtige file extension hat? Also das mit dme Counter könnte man ja eig weglassen, wenn
-                    // das file eh falsche extension hat
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
+                        filesToProcess++;
                         FileMessage message = new FileMessage(path);
                         loadBalancer.tell(message, getSelf());
                     } else {
                         histogram.setFiles(histogram.getFiles() + 1);
-                        filesProcessed++;
                     }
                 }
             }

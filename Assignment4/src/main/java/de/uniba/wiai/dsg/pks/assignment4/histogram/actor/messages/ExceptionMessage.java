@@ -4,8 +4,8 @@ import java.nio.file.Path;
 
 public final class ExceptionMessage {
     private static final long serialVersionUID = 1L;
-        private final Exception exception;
-        private final Path path;
+    private final Exception exception;
+    private final Path path;
 
     public ExceptionMessage(Exception exception, Path path) {
         this.exception = exception;

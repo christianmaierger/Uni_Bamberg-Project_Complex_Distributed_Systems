@@ -55,7 +55,7 @@ test {
 
 
 run {
-    args = ["GUI", "src/main/resources/data", "txt"]
+    args = ["GUI", "src/main/resources/data_big", "txt"]
 }
 
 jcstress {
