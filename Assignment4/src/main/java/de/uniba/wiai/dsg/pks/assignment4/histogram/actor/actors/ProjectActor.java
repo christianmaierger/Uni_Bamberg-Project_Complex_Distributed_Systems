@@ -119,7 +119,6 @@ public class ProjectActor extends AbstractActor {
         }
     }
 
-    //FIXME: Darf der LoadBalancer die FileActors supervisen statt dem ProjectActor?
     private OneForOneStrategy initializeSupervisionStrategy() {
         return new OneForOneStrategy(10, Duration.ofMinutes(1),
                 DeciderBuilder
@@ -129,8 +128,7 @@ public class ProjectActor extends AbstractActor {
                             return SupervisorStrategy.stop();
                         })
                         .match(IllegalArgumentException.class, e -> {
-                            //FIXME: Tutoren fragen wegen unbekannten Nachrichten
-                            //outputActor.tell(new UnknownMessage(e.getMessage()), getSender());
+                            outputActor.tell(new UnknownMessage(e.getMessage()), getSender());
                             return SupervisorStrategy.resume();
                         })
                         .matchAny(o -> SupervisorStrategy.escalate())

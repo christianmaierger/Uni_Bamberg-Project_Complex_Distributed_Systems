@@ -32,7 +32,7 @@ public class FolderActor extends AbstractActor {
         this.outputActor = outputActor;
     }
 
-    static Props props(ActorRef loadBalancer, ActorRef outputActor) {
+    public static Props props(ActorRef loadBalancer, ActorRef outputActor) {
         return Props.create(FolderActor.class, () -> new FolderActor(loadBalancer, outputActor));
     }
 
@@ -58,18 +58,14 @@ public class FolderActor extends AbstractActor {
     }
 
     private void handleException(ExceptionMessage exceptionMessage) throws FinalFailureException {
-        Exception exceptionFromFile = exceptionMessage.getException();
-        if (exceptionFromFile instanceof IOException) {
-            Path missingResultPath = exceptionMessage.getPath();
-            if (!retriedPathList.contains(missingResultPath)) {
-                retriedPathList.add(missingResultPath);
-                FileMessage retryMessage = new FileMessage(missingResultPath);
-                loadBalancer.tell(retryMessage, getSelf());
-            } else {
-                throw new FinalFailureException("FolderActor was not able to finish due to repeated IOException." +
-                        "Result cannot be correct anymore.",
-                        exceptionFromFile.getCause());
-            }
+        Path missingResultPath = exceptionMessage.getPath();
+        if (!retriedPathList.contains(missingResultPath)) {
+            retriedPathList.add(missingResultPath);
+            FileMessage retryMessage = new FileMessage(missingResultPath);
+            loadBalancer.tell(retryMessage, getSelf());
+        } else {
+            throw new FinalFailureException("FolderActor was not able to finish due to repeated IOException." +
+                    "Result cannot be correct anymore.");
         }
     }
 

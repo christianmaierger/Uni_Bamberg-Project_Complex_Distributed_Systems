@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 public class FileActor extends AbstractActor {
 
-    static Props props() {
+    public static Props props() {
         return Props.create(FileActor.class, FileActor::new);
     }
 
@@ -38,7 +38,7 @@ public class FileActor extends AbstractActor {
             ReturnResult fileResult = new ReturnResult(histogram, filePath);
             getSender().tell(fileResult, getSelf());
         } catch (IOException e) {
-            ExceptionMessage exceptionMessage = new ExceptionMessage(e, filePath);
+            ExceptionMessage exceptionMessage = new ExceptionMessage(filePath);
             getSender().tell(exceptionMessage, getSelf());
             throw e;
         }

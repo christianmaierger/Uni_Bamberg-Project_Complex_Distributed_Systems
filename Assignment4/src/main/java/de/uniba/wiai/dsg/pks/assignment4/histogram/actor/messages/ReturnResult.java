@@ -2,13 +2,10 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 
 import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 
-import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.Objects;
 
-public final class ReturnResult implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+public final class ReturnResult {
     private final Histogram resultHistogram;
     private final Path filePath;
 

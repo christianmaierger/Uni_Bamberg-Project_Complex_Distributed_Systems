@@ -2,13 +2,11 @@ package de.uniba.wiai.dsg.pks.assignment4.histogram.actor.messages;
 
 import net.jcip.annotations.Immutable;
 
-import java.io.Serializable;
+
 import java.util.Objects;
 
 @Immutable
-public final class ParseDirectory implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+public final class ParseDirectory {
     private final String path;
     private final String fileExtension;
 

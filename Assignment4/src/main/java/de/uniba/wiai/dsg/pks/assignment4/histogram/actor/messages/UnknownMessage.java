@@ -11,4 +11,9 @@ public final class UnknownMessage {
         return messageType;
     }
 
+    @Override
+    public String toString() {
+        return "UnknownMessage{" +
+                "messageType='" + messageType + "}";
+    }
 }

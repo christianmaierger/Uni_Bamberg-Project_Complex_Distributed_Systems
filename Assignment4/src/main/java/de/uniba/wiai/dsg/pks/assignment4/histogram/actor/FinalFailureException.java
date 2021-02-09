@@ -22,4 +22,8 @@ public class FinalFailureException extends Exception {
     public FinalFailureException(Throwable arg0) {
         super(arg0);
     }
+
+    public String getSimpleName(){
+        return "FinalFailureException";
+    }
 }

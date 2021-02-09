@@ -5,7 +5,6 @@ import de.uniba.wiai.dsg.pks.assignment.model.Histogram;
 import java.util.Objects;
 
 public final class LogMessage {
-    private static final long serialVersionUID = 1L;
     private final Histogram histogram;
     private final String path;
     private final LogMessageType logMessageType;
@@ -46,4 +45,12 @@ public final class LogMessage {
         return deepCopy;
     }
 
+    @Override
+    public String toString() {
+        return "LogMessage{" +
+                "histogram=" + histogram +
+                ", path='" + path + '\'' +
+                ", logMessageType=" + logMessageType +
+                '}';
+    }
 }
