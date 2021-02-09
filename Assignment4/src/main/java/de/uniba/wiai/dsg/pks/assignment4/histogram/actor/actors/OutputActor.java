@@ -13,7 +13,7 @@ import java.util.Optional;
 public class OutputActor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
-    public static Props props(){
+    public static Props props() {
         return Props.create(OutputActor.class, () -> new OutputActor());
     }
 
@@ -33,22 +33,16 @@ public class OutputActor extends AbstractActor {
     }
 
     private void logMessage(LogMessage logMessage) {
-
-        if (logMessage.getLogMessageType()== LogMessageType.FOLDER) {
-            log.info("\n\tProcessing of {} {} has finished. Result Histogram:\n\t{}",
-                    logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
-        } else {
-            log.info("\n\tProcessing of {} {} has finished.",
-                    logMessage.getLogMessageType().toString(), logMessage.getPath());
-        }
+        log.info("\n\tProcessing of {} {} has finished. Result Histogram:\n\t{}",
+                logMessage.getLogMessageType().toString(), logMessage.getPath(), logMessage.getHistogram().toString());
     }
 
-    private void logUnknownMessage(UnknownMessage message){
+    private void logUnknownMessage(UnknownMessage message) {
         log.warning(
                 "\n\t{} received an unknown message of type {}", getSender(), message.getMessageType());
     }
 
-    private void logUnknownMessage(Object message){
+    private void logUnknownMessage(Object message) {
         log.warning(
                 "\n\t{} received an unknown message of type {}", getSelf(), message.getClass().toString());
     }

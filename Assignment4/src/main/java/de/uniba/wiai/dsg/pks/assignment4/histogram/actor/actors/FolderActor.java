@@ -36,20 +36,18 @@ public class FolderActor extends AbstractActor {
         return Props.create(FolderActor.class, () -> new FolderActor(loadBalancer, outputActor));
     }
 
-
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(ParseDirectory.class, this::calculateFolderHistogram)
                 .match(ReturnResult.class, this::processFileResults)
-                .match(ExeptionMessage.class, this::handleException)
+                .match(ExceptionMessage.class, this::handleException)
                 .matchAny(this::handleUnknownMessage)
                 .build();
-
     }
 
 
-    public void calculateFolderHistogram(ParseDirectory message) {
+    private void calculateFolderHistogram(ParseDirectory message) {
         try {
             this.projectActor = getSender();
             folderPath = message.getPath();
@@ -59,15 +57,14 @@ public class FolderActor extends AbstractActor {
         }
     }
 
-
-    private void handleException(ExeptionMessage exeptionMessage) {
-        Exception exceptionFromFile = exeptionMessage.getException();
+    private void handleException(ExceptionMessage exceptionMessage) {
+        Exception exceptionFromFile = exceptionMessage.getException();
         if (exceptionFromFile instanceof IOException) {
             exceptionFromFile.getCause();
-            Path missingResultPath = exeptionMessage.getPath();
+            Path missingResultPath = exceptionMessage.getPath();
             if (!retriedPathList.contains(missingResultPath)){
                 retriedPathList.add(missingResultPath);
-                FileMessage retryMessage = new FileMessage(missingResultPath, outputActor);
+                FileMessage retryMessage = new FileMessage(missingResultPath);
                 loadBalancer.tell(retryMessage, getSelf());
             } else {
                 projectActor.tell(PoisonPill.getInstance(), getSelf());
@@ -75,17 +72,18 @@ public class FolderActor extends AbstractActor {
         }
     }
 
-
     private void processFileResults(ReturnResult fileResult) {
-        histogram.setProcessedFiles(histogram.getProcessedFiles() + 1);
         Histogram subResult = fileResult.getHistogram();
+        //FIXME: So könnten wir hier die Files loggen, aber getSender(fileActor) oder getSelf(folderActor) als absender???
+        outputActor.tell(new LogMessage(subResult, fileResult.getFilePath().toString(), LogMessageType.FILE), getSender());
         histogram = addUpAllFields(subResult, histogram);
         filesProcessed++;
-        checkForCompletion(fileResult.getFilePath().toString());
+        checkForCompletion();
     }
 
     // path ist hier halt path zum file, nicht path des ORdners!
-    private void checkForCompletion(String path){
+    //Stimmt, der kann dann auch weg als Parameter
+    private void checkForCompletion(){
         if(filesProcessed == filesToProcess){
             histogram.setDirectories(1);
             outputActor.tell(new LogMessage(this.histogram, folderPath ,LogMessageType.FOLDER), getSelf());
@@ -119,26 +117,23 @@ public class FolderActor extends AbstractActor {
         return result;
     }
 
-
-
     private void handleUnknownMessage(Object unknownMessage) {
         UnknownMessage message = new UnknownMessage(unknownMessage.getClass().toString());
         outputActor.tell(message, getSelf());
     }
 
-    /**
-     * @throws IOException
-     */
     private void processFiles(String folder, String fileExtension) throws IOException {
         Path folderPath = Paths.get(folder);
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
             for (Path path : stream) {
                 if (Files.isRegularFile(path)) {
                     filesToProcess++;
-
+                    //FIXME: Sollte hier nicht erst filesToProcess inkrementiert werden, wenn das file auch
+                    // die richtige file extension hat? Also das mit dme Counter könnte man ja eig weglassen, wenn
+                    // das file eh falsche extension hat
                     boolean fileExtensionCorrect = path.getFileName().toString().endsWith(fileExtension);
                     if (fileExtensionCorrect) {
-                        FileMessage message = new FileMessage(path, outputActor);
+                        FileMessage message = new FileMessage(path);
                         loadBalancer.tell(message, getSelf());
                     } else {
                         histogram.setFiles(histogram.getFiles() + 1);
@@ -147,8 +142,6 @@ public class FolderActor extends AbstractActor {
                 }
             }
         }
-        checkForCompletion(folder);
+        checkForCompletion();
     }
-
-
 }

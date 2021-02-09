@@ -30,10 +30,6 @@ public class ProjectActor extends AbstractActor {
                     .match(IOException.class, e -> SupervisorStrategy.restart())
                     .matchAny(o -> SupervisorStrategy.escalate())
                     .build());
-    //FIXME: Welche Arten von Exceptions müssen hier aus FileActor und FolderActor gehandelt werden?
-    // Könnte es evtl. sinnvoll sein, den LoadBalancer zum Supervisor von FileActors zu machen, falls
-    // das exception handling von FileActor und FolderActor sich sehr unterscheidet? Aber in den Folien
-    // aus der Übung war es nicht so...
 
     public static Props props() {
         return Props.create(ProjectActor.class, () -> new ProjectActor());
@@ -74,8 +70,6 @@ public class ProjectActor extends AbstractActor {
             Path rootDirectoryPath = Path.of(rootDirectory);
             this.pendingFolderActors++;
             startFolderActor(rootDirectory, this.pendingFolderActors);
-
-
             traverse(rootDirectoryPath);
         } catch (IOException ioException){
             getSender().tell(new akka.actor.Status.Failure(ioException), getSelf());
@@ -129,6 +123,4 @@ public class ProjectActor extends AbstractActor {
             service.tell(new ReturnResult(this.histogram), getSelf());
         }
     }
-
-
 }

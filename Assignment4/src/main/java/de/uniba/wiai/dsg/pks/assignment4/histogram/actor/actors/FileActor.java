@@ -13,11 +13,9 @@ import java.util.stream.Stream;
 
 public class FileActor extends AbstractActor {
 
-
     static Props props() {
         return Props.create(FileActor.class, () -> new FileActor());
     }
-
 
     @Override
     public Receive createReceive() {
@@ -31,17 +29,17 @@ public class FileActor extends AbstractActor {
         Path filePath = message.getPath();
         Histogram histogram = new Histogram();
         try {
-            histogram.setLines(histogram.getLines() + getLinesPerFile(filePath));
             List<String> lines = getFileAsLines(filePath);
             long[] distribution = countLetters(lines);
-            histogram.setFiles(histogram.getFiles()+1);
-            histogram.setDistribution(sumUpDistributions(distribution, histogram.getDistribution()));
+            histogram.setDistribution(distribution);
+            histogram.setLines(getLinesPerFile(filePath));
+            histogram.setFiles(1);
+            histogram.setProcessedFiles(1);
             ReturnResult fileResult = new ReturnResult(histogram, filePath);
             getSender().tell(fileResult, getSelf());
-            message.getOutputActor().tell(new LogMessage(histogram, filePath.toString(), LogMessageType.FILE), getSelf());
         } catch (IOException e) {
-            ExeptionMessage exeptionMessage = new ExeptionMessage(e, filePath);
-            getSender().tell(exeptionMessage, getSelf());
+            ExceptionMessage exceptionMessage = new ExceptionMessage(e, filePath);
+            getSender().tell(exceptionMessage, getSelf());
             throw e;
         }
     }
@@ -96,21 +94,5 @@ public class FileActor extends AbstractActor {
             }
         }
         return distribution;
-    }
-
-    /**
-     * Adds two long[] arrays of size 26 field by field and returns the resulting long[] array.
-     * This can be used to combine two character distributions.
-     *
-     * @param distributionA first long[] distribution of size 26
-     * @param distributionB second long[] distribution of size 26
-     * @return long[] array that holds the field-wise addition of the two input arrays
-     */
-    private long[] sumUpDistributions(long[] distributionA, long[] distributionB) {
-        long[] result = new long[Histogram.ALPHABET_SIZE];
-        for (int i = 0; i < Histogram.ALPHABET_SIZE; i++) {
-            result[i] = distributionA[i] + distributionB[i];
-        }
-        return result;
     }
 }
